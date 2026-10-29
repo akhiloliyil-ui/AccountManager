@@ -26,6 +26,10 @@ One app for weekly grocery planning and complete personal finances in AED, INR a
 - **Basket to expense:** tick items while shopping, then "Confirm purchase" books them as one expense on the
   account you paid from, with the receipt amount and the planned estimate kept for comparison. The grocery budget
   counts real ledger spending. Deleting that expense puts the items back on the list.
+- **Receipt scanning:** in Confirm purchase, photograph the till receipt. Claude (through Vercel AI Gateway) reads
+  the store, date, total and lines; GPA fills in the purchase and can update that store's prices from it.
+- **Bill reminders:** repeating payments and installments wait to be confirmed as paid (Transactions → Bills), with
+  a morning push notification on devices that turn it on (My account).
 - **Installable app:** add GPA to your phone's home screen or your computer's dock. It opens full screen, has
   shortcuts (add a transaction, this week's list, import), and shows an offline page instead of a browser error.
 - **Exchange rates online (optional):** one switch keeps AED, INR and other rates current from a free daily
@@ -162,6 +166,14 @@ To change the schema, edit `packages/db/src/schema.ts`, then run `npm run db:gen
   recommends).
 - **Uploads are limited to 15 MB.** Serverless hosts with smaller request limits (Vercel: 4.5 MB) would need
   direct-to-storage uploads.
+- **Hosted extras and what they need:**
+  - Receipt scanning: AI Gateway (OIDC on Vercel, or `AI_GATEWAY_API_KEY`). Vercel asks for a card on file before
+    it serves AI requests. `GPA_RECEIPT_MODEL` picks another model.
+  - Notifications: `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` (`npx web-push generate-vapid-keys`).
+  - Daily job (`apps/web/vercel.json`, 09:00 Dubai): sends reminders and makes the weekly backup. It requires
+    `CRON_SECRET`.
+  - Automatic backups: a private Vercel Blob store (`BLOB_READ_WRITE_TOKEN`). The last 8 are kept, and they can be
+    downloaded or restored from Settings → Backup & restore.
 - **Back up regularly:** Settings → Backup & restore (admins) downloads everything as one `.json.gz` file. It
   covers accounts, transactions, budgets, people (with scrambled passwords) and grocery data; flyer PDF files are
   left out. The owner can restore a backup there: it replaces everything in one transaction (nothing changes if it

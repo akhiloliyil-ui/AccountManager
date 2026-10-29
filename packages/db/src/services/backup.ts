@@ -60,6 +60,11 @@ const parentsFirst = (rows: Record<string, unknown>[]) => [...rows].sort((a, b) 
 
 export async function createBackup(db: Db, access: Access): Promise<BackupFile> {
   assertAdmin(access);
+  return snapshotBackup(db);
+}
+
+/** The backup itself, with no permission check: for the scheduled job, which has no signed-in person. */
+export async function snapshotBackup(db: Db): Promise<BackupFile> {
   const tables: BackupFile["tables"] = {};
   await db.transaction(async (tx) => {
     // One consistent snapshot of every table.

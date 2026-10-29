@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { DatabaseBackup, Download, TriangleAlert, Upload } from "lucide-react";
-import { restoreBackupAction } from "@/app/actions/auth";
+import { CalendarClock, DatabaseBackup, Download, TriangleAlert, Upload } from "lucide-react";
+import { backupNowAction, restoreBackupAction, restoreStoredBackupAction } from "@/app/actions/auth";
 import { useAction } from "@/lib/use-action";
 import { BackLink, Button, ButtonLink, Card, PageHeader } from "../ui";
 
@@ -31,7 +31,15 @@ async function readSummary(file: File): Promise<Summary> {
   return { exportedAt: data.exportedAt ?? "", counts: Object.fromEntries(Object.entries(data.tables).map(([k, v]) => [k, Array.isArray(v) ? v.length : 0])) };
 }
 
-export function BackupSettings({ isOwner }: { isOwner: boolean }) {
+interface Automatic {
+  keep: number;
+  backups: { pathname: string; size: number; uploadedAt: Date }[];
+}
+
+const stamp = (d: Date) => d.toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+const kb = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
+
+export function BackupSettings({ isOwner, automatic }: { isOwner: boolean; automatic: Automatic | null }) {
   const router = useRouter();
   const { pending, run } = useAction();
   const [file, setFile] = useState<File | null>(null);
@@ -132,6 +140,62 @@ export function BackupSettings({ isOwner }: { isOwner: boolean }) {
               </>
             ) : (
               <p className="text-sm text-muted">Only the owner can restore a backup.</p>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <div className="flex items-start gap-4">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-surface-2 text-muted">
+            <CalendarClock size={18} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-medium">Automatic weekly backups</p>
+            {automatic ? (
+              <>
+                <p className="text-sm text-muted">
+                  Saved once a week to private storage for this app; the last {automatic.keep} are kept. They&apos;re in the same Vercel account, so still
+                  download one now and then to keep your own copy.
+                </p>
+                <Button variant="secondary" className="mt-3 h-9" disabled={pending} onClick={() => run(() => backupNowAction(), { success: "Backup saved" })}>
+                  <DatabaseBackup size={15} /> Back up now
+                </Button>
+                {automatic.backups.length > 0 ? (
+                  <ul className="mt-3 divide-y divide-border rounded-xl border border-border">
+                    {automatic.backups.map((b) => (
+                      <li key={b.pathname} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
+                        <span className="min-w-0 flex-1">
+                          {stamp(new Date(b.uploadedAt))} <span className="text-muted">· {kb(b.size)}</span>
+                        </span>
+                        <a className="text-primary-strong hover:underline" href={`/api/backup/stored?file=${encodeURIComponent(b.pathname)}`} download>
+                          Download
+                        </a>
+                        {isOwner && (
+                          <button
+                            type="button"
+                            className="text-danger hover:underline disabled:opacity-50"
+                            disabled={pending}
+                            onClick={() =>
+                              confirm(`Replace ALL current data with the backup from ${stamp(new Date(b.uploadedAt))}? Everyone signs in again. This can't be undone.`) &&
+                              run(() => restoreStoredBackupAction(b.pathname), {
+                                success: "Backup restored. Everyone, including you, signs in again.",
+                                onDone: () => router.replace("/login"),
+                              })
+                            }
+                          >
+                            Restore
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-3 text-sm text-muted">The first one is made on the next daily run (9:00), or tap Back up now.</p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted">Available on the hosted app, where backup storage is connected. Here, download backups by hand.</p>
             )}
           </div>
         </div>

@@ -29,6 +29,7 @@ import type { ActionResult } from "@/lib/action-result";
 import { runAction } from "@/lib/server/action";
 import { endSession, safeNext, signInThrottle, startSession } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db";
+import { backupStoreConfigured, loadStoredBackup, storeBackup } from "@/lib/server/backup-store";
 import { pushConfigured, webPushSender } from "@/lib/server/push";
 
 const wait = (ms: number) =>
@@ -169,5 +170,23 @@ export async function testPushAction() {
       subs.filter((_, i) => results[i] === "gone").map((s) => s.id),
     );
     return results.filter((r) => r === "sent").length;
+  });
+}
+
+/** Saves a backup to the automatic-backup storage now. Admins only. */
+export async function backupNowAction() {
+  return runAction(async (db, access) => {
+    assertAdmin(access);
+    if (!backupStoreConfigured()) throw new ValidationError("Automatic backup storage isn't set up on this server");
+    return storeBackup(db);
+  });
+}
+
+/** Restores one of the automatic backups, without downloading and uploading it. Owner only. */
+export async function restoreStoredBackupAction(pathname: string) {
+  return runAction(async (db, access) => {
+    const backup = await loadStoredBackup(pathname);
+    if (!backup) throw new ValidationError("That backup no longer exists");
+    return restoreBackup(db, access, backup);
   });
 }

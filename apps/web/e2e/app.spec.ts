@@ -275,10 +275,14 @@ test("the daily job only runs with its secret; My account offers bill reminders"
   expect((await anon.get("/api/cron/daily", { headers: { authorization: "Bearer wrong" } })).status()).toBe(401);
   const ok = await anon.get("/api/cron/daily", { headers: { authorization: "Bearer e2e-cron-secret" } });
   expect(ok.status()).toBe(200);
-  expect(await ok.json()).toMatchObject({ reminders: "push not configured" });
+  expect(await ok.json()).toMatchObject({ reminders: "push not configured", backup: "backup storage not configured" });
   await anon.dispose();
 
   await page.goto("/settings/security");
   await expect(page.getByText("Bill reminders")).toBeVisible();
   await expect(page.getByText("Notifications aren't set up on this server.")).toBeVisible();
+
+  await page.goto("/settings/backup");
+  await expect(page.getByText("Automatic weekly backups")).toBeVisible();
+  await expect(page.getByText(/Available on the hosted app/)).toBeVisible();
 });
