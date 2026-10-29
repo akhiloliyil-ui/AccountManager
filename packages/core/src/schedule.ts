@@ -40,3 +40,18 @@ export function schedulePayments({ mode, amount, count, startDate, frequency }: 
 export function installmentLabel(note: string, n: number, count: number): string {
   return `${note.trim() || "Installment"} (${n}/${count})`;
 }
+
+export type BillDue = "overdue" | "today" | "week" | "later";
+
+/** Where an unpaid scheduled payment sits: past its date, due today, within the next 7 days, or later. */
+export function billDue(date: string, today: string): BillDue {
+  if (date < today) return "overdue";
+  if (date === today) return "today";
+  const days = Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
+  return days <= 7 ? "week" : "later";
+}
+
+/** Whole days between two ISO dates (positive when `date` is before `today`). */
+export function daysBetween(date: string, today: string): number {
+  return Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${date}T00:00:00Z`)) / 86_400_000);
+}

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, gte, inArray, isNotNull, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, inArray, isNotNull, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import {
   convertMinor,
   netWorth,
@@ -415,6 +415,8 @@ export async function createTransaction(db: Db, input: TxInput): Promise<string[
           scheduleId,
           scheduleNo: scheduleId ? p.n : null,
           scheduleCount: scheduleId ? p.count : null,
+          // Occurrences on or before today happened as you entered them; only later ones become bills.
+          paidAt: scheduleId && p.date <= todayIso() ? new Date() : null,
           importBatchId: input.importBatchId ?? null,
           importHash: input.importHash ?? null,
           createdBy: input.by ?? null,
@@ -462,6 +464,8 @@ export async function updateTransaction(db: Db, id: string, input: Omit<TxInput,
         description: input.description?.trim() ?? "",
         updatedBy: input.by ?? null,
         updatedAt: new Date(),
+        // Editing a payment that's due counts as dealing with it.
+        paidAt: existing!.scheduleId && input.date <= todayIso() ? (existing!.paidAt ?? new Date()) : existing!.paidAt,
       })
       .where(eq(transactions.id, id))
       .returning();
@@ -505,6 +509,8 @@ export interface TxFilter {
   limit?: number;
   /** Only transactions touching these accounts (either side of a transfer). */
   accountIds?: AccountScope;
+  /** Only scheduled payments not yet confirmed as paid (bills). */
+  unpaidBills?: boolean;
 }
 
 export async function listTransactions(db: Db, filter: TxFilter = {}): Promise<TxView[]> {
@@ -513,6 +519,7 @@ export async function listTransactions(db: Db, filter: TxFilter = {}): Promise<T
     filter.to ? lte(transactions.date, filter.to) : undefined,
     filter.accountId ? or(eq(transactions.accountId, filter.accountId), eq(transactions.toAccountId, filter.accountId)) : undefined,
     filter.types?.length ? inArray(transactions.type, filter.types) : undefined,
+    filter.unpaidBills ? and(isNotNull(transactions.scheduleId), isNull(transactions.paidAt), isNull(transactions.parentId)) : undefined,
     filter.accountIds ? or(inScope(filter.accountIds, transactions.accountId), inScope(filter.accountIds, transactions.toAccountId)) : undefined,
     filter.categoryId
       ? inArray(

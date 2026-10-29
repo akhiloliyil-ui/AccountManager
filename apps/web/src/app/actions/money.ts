@@ -15,6 +15,7 @@ import {
   deleteCategory,
   deleteRule,
   deleteTransaction,
+  markBillPaid,
   reorder,
   setAccountBalance,
   setBaseCurrency,
@@ -143,4 +144,12 @@ export async function removeRule(id: string) {
 /** Monthly budget for an expense category, in base-currency minor units; null removes it. Admins only (checked in setBudget). */
 export async function setBudgetAction(categoryId: string, amount: number | null) {
   return runAction((db, access) => setBudget(db, access, categoryId, amount));
+}
+
+/** Confirms a scheduled payment went through (or puts it back on the bills list). */
+export async function markBillPaidAction(id: string, paid = true) {
+  return runAction(async (db, access) => {
+    await assertCanWriteTransaction(db, access, id);
+    await markBillPaid(db, id, paid);
+  });
 }

@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { clsx } from "clsx";
-import { NotebookText, Plus, Search, X } from "lucide-react";
+import { CalendarClock, NotebookText, Plus, Search, X } from "lucide-react";
 import { addMonths, monthStartOf, parseIso } from "@gpa/core";
 import type { AccountView, TxView } from "@/lib/types";
 import { categoryOptions, monthLabel, TotalsBar, TxRow } from "../ledger";
@@ -28,7 +28,7 @@ export function TransactionsScreen({ data }: { data: TransactionsData }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const { today, categories, canWrite } = useApp();
+  const { today, categories, canWrite, dueBills } = useApp();
   const [day, setDay] = useState<string | null>(null);
   const accountById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
 
@@ -54,9 +54,19 @@ export function TransactionsScreen({ data }: { data: TransactionsData }) {
       <PageHeader
         title="Transactions"
         action={
-          <ButtonLink href={`/transactions/new${day ? `?date=${day}` : ""}`} variant="expense" className={clsx("hidden shrink-0", canWrite && "md:inline-flex")}>
-            <Plus size={18} /> Add
-          </ButtonLink>
+          <div className="flex gap-2">
+            <ButtonLink href="/transactions/bills" variant="secondary" className="shrink-0">
+              <CalendarClock size={16} /> Bills
+              {dueBills > 0 && <span className="rounded-full bg-danger px-1.5 text-xs font-semibold text-white">{dueBills}</span>}
+            </ButtonLink>
+            <ButtonLink
+              href={`/transactions/new${day ? `?date=${day}` : ""}`}
+              variant="expense"
+              className={clsx("hidden shrink-0", canWrite && "md:inline-flex")}
+            >
+              <Plus size={18} /> Add
+            </ButtonLink>
+          </div>
         }
       />
 

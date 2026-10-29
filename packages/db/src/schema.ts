@@ -219,6 +219,9 @@ export const transactions = pgTable(
     createdBy: text("created_by").references((): AnyPgColumn => users.id, { onDelete: "set null" }),
     updatedBy: text("updated_by").references((): AnyPgColumn => users.id, { onDelete: "set null" }),
     updatedAt: timestamp("updated_at", { withTimezone: true }),
+    /** For scheduled payments (repeats and installments): when someone confirmed it was paid. Unpaid ones on or
+        past their date are shown as due or overdue bills. They count in balances from their date either way. */
+    paidAt: timestamp("paid_at", { withTimezone: true }),
   },
   (t) => [
     index("transactions_date_idx").on(t.date),

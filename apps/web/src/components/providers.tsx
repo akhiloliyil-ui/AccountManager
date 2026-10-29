@@ -11,6 +11,8 @@ export interface AppData {
   catalog: Catalog;
   categories: CategoryRow[];
   settings: Pick<Settings, "groceryBudgetFils" | "preferredStoreIds" | "groceryCategoryId" | "defaultAccountId">;
+  /** Scheduled payments on or past their date that nobody has marked paid. */
+  dueBills: number;
   /** The signed-in person. The server enforces every permission; the UI only hides what they can't use. */
   user: { displayName: string; username: string; role: "admin" | "write" | "read"; isOwner: boolean };
 }
@@ -66,6 +68,11 @@ export function AppDataProvider({ value, children }: { value: AppData; children:
     shellUser = value.user;
     shellListeners.forEach((l) => l());
   }, [value.user]);
+  // The installed app's icon shows how many bills need confirming (where the device supports badges).
+  useEffect(() => {
+    const nav = navigator as Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+    (value.dueBills ? nav.setAppBadge?.(value.dueBills) : nav.clearAppBadge?.())?.catch(() => {});
+  }, [value.dueBills]);
   return <Ctx.Provider value={ctx}>{children}</Ctx.Provider>;
 }
 

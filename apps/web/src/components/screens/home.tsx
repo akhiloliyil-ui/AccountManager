@@ -2,15 +2,16 @@
 
 import Link from "next/link";
 import { useMemo, type ReactNode } from "react";
-import { CalendarClock, ChevronRight, FileSpreadsheet, Receipt, Scale } from "lucide-react";
+import { ChevronRight, FileSpreadsheet, Receipt, Scale } from "lucide-react";
 import type { CategoryBudgetReport, NetWorth, Totals } from "@gpa/core";
 import { monthBudget, quoteList } from "@/lib/grocery";
-import type { AccountView, GroceryList, TxView } from "@/lib/types";
+import type { AccountView, Bill, GroceryList, TxView } from "@/lib/types";
 import { TxRow } from "../ledger";
 import { OfferCard } from "../offer-card";
 import { useApp } from "../providers";
 import { Amount, BudgetRing, ButtonLink, Card, Money, SectionTitle, StoreName } from "../ui";
 import type { GrocerySpend } from "./budget";
+import { BillsCard } from "./bills";
 import { BudgetsCard } from "./budgets";
 
 export interface HomeData {
@@ -18,7 +19,7 @@ export interface HomeData {
   worth: NetWorth;
   month: Totals;
   recent: TxView[];
-  upcoming: TxView[];
+  bills: Bill[];
   accounts: AccountView[];
   lists: GroceryList[];
   spend: GrocerySpend;
@@ -27,7 +28,7 @@ export interface HomeData {
 }
 
 export function HomeScreen({ data }: { data: HomeData }) {
-  const { greeting, worth, month, recent, upcoming, accounts, lists, spend, currentWeekId, budgets } = data;
+  const { greeting, worth, month, recent, bills, accounts, lists, spend, currentWeekId, budgets } = data;
   const { base, catalog, settings, today } = useApp();
   const accountById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
 
@@ -133,35 +134,7 @@ export function HomeScreen({ data }: { data: HomeData }) {
 
       <BudgetsCard report={budgets} />
 
-      {upcoming.length > 0 && (
-        <section>
-          <SectionTitle
-            title="Coming up"
-            action={
-              <Link href="/debts" className="text-sm font-medium text-primary-strong">
-                Debts
-              </Link>
-            }
-          />
-          <Card className="divide-y divide-border">
-            {upcoming.map((t) => (
-              <Link key={t.id} href={`/transactions/${t.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-2">
-                <CalendarClock size={18} className="shrink-0 text-muted" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
-                    {t.note || "Scheduled payment"} ({t.scheduleNo}/{t.scheduleCount})
-                  </p>
-                  <p className="text-xs text-muted">
-                    {new Date(`${t.date}T00:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} ·{" "}
-                    {accountById.get(t.accountId)?.name}
-                  </p>
-                </div>
-                <Amount minor={t.amount} currency={t.currency} className="text-sm font-semibold" />
-              </Link>
-            ))}
-          </Card>
-        </section>
-      )}
+      <BillsCard bills={bills} accounts={accounts} />
 
       <section>
         <SectionTitle

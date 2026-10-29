@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { after } from "next/server";
 import { todayIso } from "@gpa/core";
-import { getCatalog, getCurrencies, getSettings, listCategories, refreshRatesIfStale } from "@gpa/db";
+import { countDueBills, getCatalog, getCurrencies, getSettings, listCategories, refreshRatesIfStale } from "@gpa/db";
 import { requestSession } from "@/lib/server/db";
 import { AppDataProvider } from "./providers";
 
@@ -9,11 +9,12 @@ import { AppDataProvider } from "./providers";
 export async function AppData({ children }: { children: ReactNode }) {
   const { db, access } = await requestSession();
   const today = todayIso();
-  const [{ rows: currencies }, catalog, categories, settings] = await Promise.all([
+  const [{ rows: currencies }, catalog, categories, settings, dueBills] = await Promise.all([
     getCurrencies(db),
     getCatalog(db, today),
     listCategories(db),
     getSettings(db),
+    countDueBills(db, today, access.accountIds),
   ]);
   const { groceryBudgetFils, preferredStoreIds, groceryCategoryId, defaultAccountId, fxAutoUpdate } = settings;
   const canSeeDefault = !defaultAccountId || access.accountIds === null || access.accountIds.includes(defaultAccountId);
@@ -27,6 +28,7 @@ export async function AppData({ children }: { children: ReactNode }) {
         catalog,
         categories,
         settings: { groceryBudgetFils, preferredStoreIds, groceryCategoryId, defaultAccountId: canSeeDefault ? defaultAccountId : null },
+        dueBills,
         user: { displayName: access.displayName, username: access.username, role: access.role, isOwner: access.isOwner },
       }}
     >

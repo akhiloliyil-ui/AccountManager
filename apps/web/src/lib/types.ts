@@ -3,6 +3,7 @@ export type {
   AccountGroupRow,
   AccountGroupType,
   AccountView,
+  Bill,
   Catalog,
   CategoryRow,
   CurrencyRow,

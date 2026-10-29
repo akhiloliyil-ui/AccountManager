@@ -63,7 +63,12 @@ function BudgetRow({ line, pace, onEdit }: { line: CategoryBudgetLine; pace: num
     </>
   );
   return onEdit ? (
-    <button type="button" onClick={onEdit} className="block w-full px-4 py-3.5 text-left hover:bg-surface-2" aria-label={`Edit budget for ${label.sub ?? label.top}`}>
+    <button
+      type="button"
+      onClick={onEdit}
+      className="block w-full px-4 py-3.5 text-left hover:bg-surface-2"
+      aria-label={`Edit budget for ${label.sub ?? label.top}`}
+    >
       {body}
     </button>
   ) : (
@@ -102,7 +107,11 @@ export function BudgetsScreen({ report, limited }: { report: Report; limited: bo
         <EmptyState
           icon={<PiggyBank size={22} />}
           title="No budgets yet"
-          body={isAdmin ? "Set a monthly limit for Food, Transport, Rent or any expense category, and see how each month is going." : "An admin can set monthly limits per category in this screen."}
+          body={
+            isAdmin
+              ? "Set a monthly limit for Food, Transport, Rent or any expense category, and see how each month is going."
+              : "An admin can set monthly limits per category in this screen."
+          }
           action={isAdmin ? <Button onClick={() => setEditing("new")}>Add a budget</Button> : undefined}
         />
       ) : (

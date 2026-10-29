@@ -233,3 +233,24 @@ test("monthly budgets per category show spent, left and over", async ({ page }, 
   await page.getByText("Budgets · 1 over").scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath("home-budgets.png") });
 });
+
+test("bills list upcoming installments to confirm or skip", async ({ page }) => {
+  // "Kitchen accessories" was split into 4 monthly installments from today: payment 1 is paid, 2–4 are bills.
+  const shown = (text: string) => page.getByText(text, { exact: true }).filter({ visible: true });
+  await page.goto("/transactions");
+  await page.getByRole("link", { name: /^Bills/ }).click();
+  await expect(page).toHaveURL(/\/transactions\/bills$/);
+  await expect(shown("(1/4)")).toHaveCount(0);
+  for (const n of [2, 3, 4]) await expect(shown(`(${n}/4)`)).toBeVisible();
+
+  await page.getByRole("button", { name: /^Mark Kitchen accessories .* as paid$/ }).first().click();
+  await expect(shown("Marked as paid")).toBeVisible();
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Skip" }).last().click();
+  await expect(shown("Payment skipped")).toBeVisible();
+
+  await page.reload();
+  await expect(shown("(3/4)")).toBeVisible();
+  await expect(shown("(2/4)")).toHaveCount(0);
+  await expect(shown("(4/4)")).toHaveCount(0);
+});

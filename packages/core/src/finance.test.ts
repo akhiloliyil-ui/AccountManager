@@ -175,3 +175,15 @@ describe("dates and schedules", () => {
     ]);
   });
 });
+
+describe("bill due dates", () => {
+  it("sorts payments into overdue, today, this week and later", async () => {
+    const { billDue, daysBetween } = await import("./schedule");
+    expect(billDue("2026-10-28", "2026-10-29")).toBe("overdue");
+    expect(billDue("2026-10-29", "2026-10-29")).toBe("today");
+    expect(billDue("2026-11-05", "2026-10-29")).toBe("week");
+    expect(billDue("2026-11-06", "2026-10-29")).toBe("later");
+    expect(daysBetween("2026-10-26", "2026-10-29")).toBe(3);
+    expect(daysBetween("2026-03-28", "2026-03-30")).toBe(2);
+  });
+});

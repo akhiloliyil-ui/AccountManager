@@ -15,5 +15,9 @@ export const migrations: { tag: string; sql: string }[] = [
   {
     "tag": "0003_shallow_marten_broadcloak",
     "sql": "CREATE TABLE \"budgets\" (\n\t\"category_id\" text PRIMARY KEY NOT NULL,\n\t\"amount\" bigint NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\tCONSTRAINT \"budgets_amount_check\" CHECK (\"budgets\".\"amount\" > 0)\n);\n--> statement-breakpoint\nALTER TABLE \"budgets\" ADD CONSTRAINT \"budgets_category_id_categories_id_fk\" FOREIGN KEY (\"category_id\") REFERENCES \"public\".\"categories\"(\"id\") ON DELETE cascade ON UPDATE no action;"
+  },
+  {
+    "tag": "0004_smooth_masque",
+    "sql": "ALTER TABLE \"transactions\" ADD COLUMN \"paid_at\" timestamp with time zone;--> statement-breakpoint\n-- Scheduled payments already in the past were settled before bills existed; only future ones need confirming.\nUPDATE \"transactions\" SET \"paid_at\" = now() WHERE \"schedule_id\" IS NOT NULL AND \"date\" < current_date;\n"
   }
 ];
