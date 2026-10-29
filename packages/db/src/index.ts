@@ -12,3 +12,4 @@ export * from "./services/grocery";
 export * from "./services/pdf-offers";
 export * from "./services/fx";
 export * from "./services/auth";
+export * from "./services/budgets";

@@ -74,6 +74,12 @@ export async function setBaseCurrency(db: Db, code: string): Promise<void> {
         .set({ perBase: r.code === code ? 1 : r.perBase / next.perBase, isBase: r.code === code, active: r.active || r.code === code })
         .where(eq(currencies.code, r.code));
     }
+    // Budgets are kept in the base currency, so they move with it.
+    const old = rows.find((r) => r.isBase);
+    if (old && old.code !== code) {
+      const factor = next.perBase / old.perBase;
+      await tx.execute(sql`update budgets set amount = greatest(1, round(amount * ${factor}::float8 * power(10, ${next.decimals - old.decimals}::int)))`);
+    }
   });
 }
 

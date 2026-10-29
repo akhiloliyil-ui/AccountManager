@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChartPie, List } from "lucide-react";
+import { ChevronLeft, ChartPie, List, PiggyBank } from "lucide-react";
 import { categoryBreakdown, shiftPeriod, totals, type Period, type StatTx, type Totals } from "@gpa/core";
 import { Donut, GroupedBars, OTHER, SERIES, type Slice } from "../charts";
 import { useApp } from "../providers";
-import { Amount, Card, EmptyState, MonthNav, PageHeader, Segmented } from "../ui";
+import { Amount, ButtonLink, Card, EmptyState, MonthNav, PageHeader, Segmented } from "../ui";
 
 export interface StatsData {
   period: Period;
@@ -59,7 +59,14 @@ export function StatsScreen({ data }: { data: StatsData }) {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Stats" />
+      <PageHeader
+        title="Stats"
+        action={
+          <ButtonLink href="/stats/budgets" variant="secondary">
+            <PiggyBank size={16} /> Budgets
+          </ButtonLink>
+        }
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <MonthNav label={rangeLabel(period, range.start, range.end)} prevHref={href({ a: shiftPeriod(period, anchor, -1) })} nextHref={href({ a: shiftPeriod(period, anchor, 1) })} />

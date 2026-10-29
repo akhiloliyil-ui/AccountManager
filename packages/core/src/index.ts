@@ -3,6 +3,7 @@ export * from "./types";
 export * from "./pricing";
 export * from "./basket";
 export * from "./budget";
+export * from "./category-budgets";
 export * from "./currency";
 export * from "./dates";
 export * from "./ledger";

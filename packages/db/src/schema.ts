@@ -160,6 +160,19 @@ export const categories = pgTable(
   (t) => [index("categories_parent_idx").on(t.parentId)],
 );
 
+/** Monthly spending limit per expense category, in the base currency's minor units. */
+export const budgets = pgTable(
+  "budgets",
+  {
+    categoryId: text("category_id")
+      .primaryKey()
+      .references(() => categories.id, { onDelete: "cascade" }),
+    amount: minor("amount").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("budgets_amount_check", sql`${t.amount} > 0`)],
+);
+
 export const importBatches = pgTable("import_batches", {
   id: id(),
   accountId: text("account_id")

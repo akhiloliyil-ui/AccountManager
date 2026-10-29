@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, type ReactNode } from "react";
 import { CalendarClock, ChevronRight, FileSpreadsheet, Receipt, Scale } from "lucide-react";
-import type { NetWorth, Totals } from "@gpa/core";
+import type { CategoryBudgetReport, NetWorth, Totals } from "@gpa/core";
 import { monthBudget, quoteList } from "@/lib/grocery";
 import type { AccountView, GroceryList, TxView } from "@/lib/types";
 import { TxRow } from "../ledger";
@@ -11,6 +11,7 @@ import { OfferCard } from "../offer-card";
 import { useApp } from "../providers";
 import { Amount, BudgetRing, ButtonLink, Card, Money, SectionTitle, StoreName } from "../ui";
 import type { GrocerySpend } from "./budget";
+import { BudgetsCard } from "./budgets";
 
 export interface HomeData {
   greeting: string;
@@ -22,10 +23,11 @@ export interface HomeData {
   lists: GroceryList[];
   spend: GrocerySpend;
   currentWeekId: string | null;
+  budgets: CategoryBudgetReport & { month: string };
 }
 
 export function HomeScreen({ data }: { data: HomeData }) {
-  const { greeting, worth, month, recent, upcoming, accounts, lists, spend, currentWeekId } = data;
+  const { greeting, worth, month, recent, upcoming, accounts, lists, spend, currentWeekId, budgets } = data;
   const { base, catalog, settings, today } = useApp();
   const accountById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
 
@@ -128,6 +130,8 @@ export function HomeScreen({ data }: { data: HomeData }) {
           </Card>
         )}
       </div>
+
+      <BudgetsCard report={budgets} />
 
       {upcoming.length > 0 && (
         <section>

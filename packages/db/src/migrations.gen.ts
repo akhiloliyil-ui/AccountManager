@@ -11,5 +11,9 @@ export const migrations: { tag: string; sql: string }[] = [
   {
     "tag": "0002_blushing_jean_grey",
     "sql": "ALTER TABLE \"transactions\" ADD COLUMN \"created_by\" text;--> statement-breakpoint\nALTER TABLE \"transactions\" ADD COLUMN \"updated_by\" text;--> statement-breakpoint\nALTER TABLE \"transactions\" ADD COLUMN \"updated_at\" timestamp with time zone;--> statement-breakpoint\nALTER TABLE \"transactions\" ADD CONSTRAINT \"transactions_created_by_users_id_fk\" FOREIGN KEY (\"created_by\") REFERENCES \"public\".\"users\"(\"id\") ON DELETE set null ON UPDATE no action;--> statement-breakpoint\nALTER TABLE \"transactions\" ADD CONSTRAINT \"transactions_updated_by_users_id_fk\" FOREIGN KEY (\"updated_by\") REFERENCES \"public\".\"users\"(\"id\") ON DELETE set null ON UPDATE no action;"
+  },
+  {
+    "tag": "0003_shallow_marten_broadcloak",
+    "sql": "CREATE TABLE \"budgets\" (\n\t\"category_id\" text PRIMARY KEY NOT NULL,\n\t\"amount\" bigint NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\tCONSTRAINT \"budgets_amount_check\" CHECK (\"budgets\".\"amount\" > 0)\n);\n--> statement-breakpoint\nALTER TABLE \"budgets\" ADD CONSTRAINT \"budgets_category_id_categories_id_fk\" FOREIGN KEY (\"category_id\") REFERENCES \"public\".\"categories\"(\"id\") ON DELETE cascade ON UPDATE no action;"
   }
 ];

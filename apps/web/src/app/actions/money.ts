@@ -18,6 +18,7 @@ import {
   reorder,
   setAccountBalance,
   setBaseCurrency,
+  setBudget,
   setSettings,
   updateAccount,
   updateAccountGroup,
@@ -137,4 +138,9 @@ export async function saveRule(input: { pattern: string; categoryId: string }) {
 
 export async function removeRule(id: string) {
   return runAction((db, access) => (assertAdmin(access), deleteRule(db, id)));
+}
+
+/** Monthly budget for an expense category, in base-currency minor units; null removes it. Admins only (checked in setBudget). */
+export async function setBudgetAction(categoryId: string, amount: number | null) {
+  return runAction((db, access) => setBudget(db, access, categoryId, amount));
 }

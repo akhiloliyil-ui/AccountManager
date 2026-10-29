@@ -202,3 +202,34 @@ test("installs as an app and shows an offline page without a network", async ({ 
   await context.setOffline(false);
   await expect(page.getByRole("heading", { name: "Stats" })).toBeVisible();
 });
+
+test("monthly budgets per category show spent, left and over", async ({ page }, testInfo) => {
+  await page.goto("/stats");
+  await page.getByRole("link", { name: "Budgets" }).click();
+  await expect(page.getByText("No budgets yet")).toBeVisible();
+
+  const add = async (category: string, amount: string) => {
+    await page.getByRole("button", { name: /Add (a )?budget/ }).first().click();
+    const sheet = page.getByRole("dialog");
+    await sheet.getByRole("combobox", { name: "Category" }).selectOption(category);
+    await sheet.getByLabel(/Monthly limit/).fill(amount);
+    await sheet.getByRole("button", { name: "Save budget" }).click();
+    await expect(page.getByText("Budget saved")).toBeVisible();
+  };
+  // "Lunch at the office" (DH 20.50, Food › Eating out) was booked earlier this month.
+  await add("e-food", "100");
+  await add("e-food--eating-out", "10");
+
+  const eatingOut = page.getByRole("button", { name: "Edit budget for Eating out" });
+  await expect(eatingOut).toContainText("Over budget");
+  await expect(eatingOut).toContainText("Over by DH 10.50");
+  const food = page.getByRole("button", { name: "Edit budget for Food" });
+  await expect(food).toContainText("DH 20.50");
+  await expect(food).toContainText("DH 79.50 left");
+  await page.screenshot({ path: testInfo.outputPath("budgets.png"), fullPage: true });
+
+  await page.goto("/");
+  await expect(page.getByText("Budgets · 1 over")).toBeVisible();
+  await page.getByText("Budgets · 1 over").scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath("home-budgets.png") });
+});
