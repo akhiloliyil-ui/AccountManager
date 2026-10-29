@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+/* GPA design tokens: warm-grey surfaces, one fresh green primary, amber for offers, red only for over-budget.
+   The money ledger adds the Money Manager convention: income blue, expense coral. */
+:root {
+  --bg: #f6f6f3;
+  --surface: #ffffff;
+  --surface-2: #f1f1ed;
+  --border: #e6e5df;
+  --text: #17191c;
+  --muted: #6b6f76;
+  --primary: #12a150;
+  --primary-strong: #0c8a43;
+  --primary-soft: #e6f6ec;
+  --on-primary: #ffffff;
+  --offer: #c2700c;
+  --offer-soft: #fdf1e1;
+  --danger: #d4352b;
+  --danger-soft: #fdeceb;
+  --ring-track: #ecebe6;
+  --income: #2f6fde;
+  --income-soft: #e8f0fd;
+  --expense: #e0533d;
+  --expense-soft: #fdece8;
+  /* Chart categorical slots (fixed order) and the "Other" fold. */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #6250d6;
+  --series-other: #b4b2aa;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1112;
+    --surface: #17191b;
+    --surface-2: #1f2224;
+    --border: #2a2d30;
+    --text: #eef0f2;
+    --muted: #9aa0a6;
+    --primary: #2fc56d;
+    --primary-strong: #48d47f;
+    --primary-soft: #133222;
+    --on-primary: #06210f;
+    --offer: #f0a443;
+    --offer-soft: #3a2810;
+    --danger: #f2675e;
+    --danger-soft: #3a1714;
+    --ring-track: #26292c;
+    --income: #6ea6ff;
+    --income-soft: #15233b;
+    --expense: #ff7f6b;
+    --expense-soft: #3a1b15;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #9085e9;
+    --series-other: #5d5c57;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-soft: var(--primary-soft);
+  --color-on-primary: var(--on-primary);
+  --color-offer: var(--offer);
+  --color-offer-soft: var(--offer-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-income: var(--income);
+  --color-income-soft: var(--income-soft);
+  --color-expense: var(--expense);
+  --color-expense-soft: var(--expense-soft);
+  --font-sans: var(--font-inter);
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Space for the fixed bottom tab bar and the iOS home indicator on mobile. */
+.pb-tabbar {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
+}
+@media (min-width: 768px) {
+  .pb-tabbar {
+    padding-bottom: 48px;
+  }
+}
+
+dialog::backdrop {
+  backdrop-filter: blur(2px);
+}

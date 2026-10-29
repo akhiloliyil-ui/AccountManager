@@ -1,0 +1,25 @@
+{
+  "name": "gpa-money-manager",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "npm run dev -w @gpa/web",
+    "build": "npm run build -w @gpa/web",
+    "start": "npm run start -w @gpa/web",
+    "lint": "npm run lint -w @gpa/web",
+    "test": "npm test -w @gpa/core -w @gpa/db -w @gpa/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:generate": "npm run db:generate -w @gpa/db",
+    "db:migrate": "npm run db:migrate -w @gpa/db",
+    "db:seed-demo": "npm run db:seed-demo -w @gpa/db",
+    "passcode:reset": "npm run passcode:reset -w @gpa/db",
+    "zip": "node scripts/make-zip.mjs",
+    "e2e": "npm run build && npm run e2e -w @gpa/web"
+  }
+}

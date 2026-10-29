@@ -1,0 +1,22 @@
+/** Type-only re-exports so client components never pull the database package into the browser bundle. */
+export type {
+  AccountGroupRow,
+  AccountGroupType,
+  AccountView,
+  Catalog,
+  CategoryRow,
+  CurrencyRow,
+  GroceryList,
+  ListItem,
+  ListType,
+  Offer,
+  PdfImportRow,
+  PdfLineRow,
+  PreviewLine,
+  Purchase,
+  RuleRow,
+  Settings,
+  TxInput,
+  TxType,
+  TxView,
+} from "@gpa/db";

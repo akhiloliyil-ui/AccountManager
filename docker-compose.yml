@@ -1,0 +1,22 @@
+# PostgreSQL for GPA Money Manager only. Its own project name, database, user, volume and port (5434),
+# so it never shares data with any other app on this machine.
+name: gpa-money-manager
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: gpa
+      POSTGRES_PASSWORD: gpa
+      POSTGRES_DB: gpa_money
+    ports:
+      - "5434:5432"
+    volumes:
+      - gpa-money-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gpa -d gpa_money"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  gpa-money-pgdata:

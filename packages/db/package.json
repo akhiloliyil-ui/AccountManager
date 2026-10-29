@@ -1,0 +1,35 @@
+{
+  "name": "@gpa/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate && node scripts/bundle-migrations.mjs",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed-demo": "tsx scripts/seed-demo.ts",
+    "passcode:reset": "tsx scripts/reset-passcode.ts"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.13",
+    "@gpa/core": "*",
+    "drizzle-orm": "^0.45.4",
+    "pg": "^8.23.1",
+    "unpdf": "^1.9.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "^0.31.11",
+    "tsx": "^4.23.15",
+    "typescript": "^5",
+    "vitest": "^5.0.5"
+  }
+}
