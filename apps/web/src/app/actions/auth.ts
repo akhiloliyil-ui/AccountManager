@@ -3,6 +3,9 @@
 import { redirect } from "next/navigation";
 import {
   assertAdmin,
+  decodeBackup,
+  MAX_UPLOAD_BYTES,
+  restoreBackup,
   authenticate,
   changeOwnPassword,
   createOwner,
@@ -121,5 +124,17 @@ export async function signOutEveryoneAction() {
     await signOutEverywhere(db);
     const me = await getUser(db, access.userId);
     if (me) await startSession(db, me);
+  });
+}
+
+/* ------------------------------------------------------------------ backup */
+
+/** Replaces all data with an uploaded backup. Owner only (checked in restoreBackup); signs everyone out. */
+export async function restoreBackupAction(form: FormData) {
+  return runAction(async (db, access) => {
+    const file = form.get("file");
+    if (!(file instanceof File) || !file.size) throw new ValidationError("Choose a backup file");
+    if (file.size > MAX_UPLOAD_BYTES) throw new ValidationError("Backup files must be 15 MB or smaller");
+    return restoreBackup(db, access, decodeBackup(new Uint8Array(await file.arrayBuffer())));
   });
 }

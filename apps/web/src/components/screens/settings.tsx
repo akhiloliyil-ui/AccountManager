@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { clsx } from "clsx";
-import { ArrowDown, ArrowUp, ChevronRight, Coins, Download, FolderTree, Landmark, LogOut, Pencil, Plus, RefreshCw, ShoppingBasket, Trash2, UserRound, Users, Wand2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, Coins, DatabaseBackup, Download, FolderTree, Landmark, LogOut, Pencil, Plus, RefreshCw, ShoppingBasket, Trash2, UserRound, Users, Wand2 } from "lucide-react";
 import { aedToFils } from "@gpa/core";
 import { changePasswordAction, signOut, signOutEveryoneAction, signOutMyOtherDevices } from "@/app/actions/auth";
 import { updateGrocerySettingsAction } from "@/app/actions/grocery";
@@ -39,6 +39,7 @@ export function SettingsHub() {
     { href: "/settings/currencies", icon: <Coins size={18} />, title: "Currencies", body: "AED, INR and others, base currency and exchange rates", admin: true },
     { href: "/settings/rules", icon: <Wand2 size={18} />, title: "Auto-categorise rules", body: "How imported statement lines get their category", admin: true },
     { href: "/settings/grocery", icon: <ShoppingBasket size={18} />, title: "Grocery", body: "Budget, stores, purchase category and default account", admin: true },
+    { href: "/settings/backup", icon: <DatabaseBackup size={18} />, title: "Backup & restore", body: "Download everything as one file, or restore from one", admin: true },
     {
       href: "/api/export/transactions",
       icon: <Download size={18} />,
@@ -65,7 +66,7 @@ export function SettingsHub() {
             </Link>
           ))}
       </Card>
-      {isAdmin && <p className="mt-4 text-xs text-muted">Data is stored in PostgreSQL. Back up the database (or this CSV) regularly.</p>}
+      {isAdmin && <p className="mt-4 text-xs text-muted">Data is stored in PostgreSQL. Download a backup regularly (Backup &amp; restore).</p>}
       <form action={signOut} className="mt-6">
         <Button type="submit" variant="secondary">
           <LogOut size={16} /> Sign out

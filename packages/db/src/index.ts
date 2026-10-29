@@ -14,3 +14,4 @@ export * from "./services/fx";
 export * from "./services/auth";
 export * from "./services/budgets";
 export * from "./services/bills";
+export * from "./services/backup";

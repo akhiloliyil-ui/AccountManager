@@ -162,5 +162,7 @@ To change the schema, edit `packages/db/src/schema.ts`, then run `npm run db:gen
   recommends).
 - **Uploads are limited to 15 MB.** Serverless hosts with smaller request limits (Vercel: 4.5 MB) would need
   direct-to-storage uploads.
-- **Back up regularly:** use `pg_dump`, or copy `apps/web/.data/pglite` while the app is stopped. Settings →
-  Export transactions gives a CSV of everything.
+- **Back up regularly:** Settings → Backup & restore (admins) downloads everything as one `.json.gz` file. It
+  covers accounts, transactions, budgets, people (with scrambled passwords) and grocery data; flyer PDF files are
+  left out. The owner can restore a backup there: it replaces everything in one transaction (nothing changes if it
+  fails) and signs everyone out. `pg_dump`, or copying `apps/web/.data/pglite` while the app is stopped, also work.

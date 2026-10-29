@@ -157,3 +157,38 @@ test("people are limited to five, and changing a password signs other devices ou
   await expect(phonePage).toHaveURL(/\/login/);
   await phone.close();
 });
+
+test("the owner downloads a backup and restores it; later changes are undone and everyone signs in again", async ({ page, browser }) => {
+  await signIn(page, OWNER.username, OWNER.password);
+  const res = await page.request.get("/api/backup");
+  expect(res.headers()["content-type"]).toBe("application/gzip");
+  expect(res.headers()["content-disposition"]).toMatch(/gpa-backup-\d{4}-\d{2}-\d{2}\.json\.gz/);
+  const backup = await res.body();
+
+  // A change made after the backup.
+  await page.goto("/transactions/new");
+  await page.getByLabel("Amount in AED").fill("77");
+  await page.getByPlaceholder("e.g. Monthly purchase").fill("Made after the backup");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByRole("link", { name: /Made after the backup/ })).toBeVisible();
+
+  await page.goto("/settings");
+  await page.getByRole("link", { name: /Backup & restore/ }).click();
+  await page.locator('input[type="file"]').setInputFiles({ name: "gpa-backup.json.gz", mimeType: "application/gzip", buffer: backup });
+  await expect(page.getByText(/^Backup from/)).toBeVisible();
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Restore this backup" }).click();
+  await expect(page).toHaveURL(/\/login/);
+
+  await signIn(page, OWNER.username, OWNER.password);
+  await page.goto("/transactions");
+  await expect(page.getByRole("link", { name: /Lunch at the office/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Made after the backup/ })).toHaveCount(0);
+
+  // People restored with the backup can sign in again, and non-admins can't download one.
+  const priya = await browser.newContext();
+  const priyaPage = await priya.newPage();
+  await signIn(priyaPage, "priya", "priya-new-pass-26");
+  expect((await priyaPage.request.get("/api/backup")).status()).toBe(403);
+  await priya.close();
+});
