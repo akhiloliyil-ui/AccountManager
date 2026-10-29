@@ -31,7 +31,8 @@ export async function createDb({ url, dataDir, seed = true }: CreateDbOptions = 
   if (url) {
     const { Pool } = await import("pg");
     const { drizzle } = await import("drizzle-orm/node-postgres");
-    const pool = new Pool({ connectionString: url, max: 10 });
+    // Small and quick to release idle connections: serverless hosts run many instances against one database.
+    const pool = new Pool({ connectionString: url, max: 5, idleTimeoutMillis: 10_000 });
     handle = { db: drizzle({ client: pool, schema }) as unknown as Db, driver: "postgres", close: () => pool.end() };
   } else {
     const { PGlite } = await import("@electric-sql/pglite");
