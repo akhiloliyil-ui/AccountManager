@@ -1,0 +1,15 @@
+# Never upload local data, secrets or build leftovers.
+node_modules
+**/node_modules
+**/.next
+**/.data
+.env*
+**/.env*
+!.env.example
+**/test-results
+**/playwright-report
+**/e2e/.auth
+*.zip
+.agents
+.claude
+skills-lock.json
