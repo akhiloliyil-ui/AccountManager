@@ -3,7 +3,7 @@ import { SESSION_COOKIE } from "@/lib/session-cookie";
 
 /**
  * Optimistic check only: no session cookie → the sign-in page, before anything renders. The cookie's signature
- * is verified on the server next to every data read and Server Action (requestDb / runAction).
+ * is verified on the server next to every data read and Server Action (requestSession / runAction).
  */
 export function proxy(request: NextRequest) {
   if (request.cookies.has(SESSION_COOKIE)) return NextResponse.next();
