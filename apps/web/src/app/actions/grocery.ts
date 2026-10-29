@@ -57,11 +57,17 @@ export async function saveAsTemplateAction(listId: string, name: string) {
 }
 
 export async function updateGrocerySettingsAction(patch: Partial<GrocerySettings>) {
-  return runAction((db, access) => (assertAdmin(access), updateGrocerySettings(db, patch)));
+  return runAction(async (db, access) => {
+    // Choosing which stores to compare is everyday shopping; the budget, category and default account are admin settings.
+    const storesOnly = Object.keys(patch).every((k) => k === "preferredStoreIds");
+    if (storesOnly) assertCanWrite(access);
+    else assertAdmin(access);
+    return updateGrocerySettings(db, patch);
+  });
 }
 
 export async function confirmPurchaseAction(input: ConfirmPurchaseInput) {
-  return runAction((db, access) => (assertCanWrite(access, [input.accountId]), confirmPurchase(db, input)));
+  return runAction((db, access) => (assertCanWrite(access, [input.accountId]), confirmPurchase(db, { ...input, by: access.userId })));
 }
 
 export async function setShelfPriceAction(input: { productId: string; storeId: string; priceFils: number }) {

@@ -38,7 +38,7 @@ export async function saveTransaction(id: string | null, input: TxInput) {
   return runAction(async (db, access) => {
     assertCanWrite(access, [input.accountId, input.toAccountId]);
     // Only what a person types: import and basket bookkeeping is set by those flows themselves.
-    const clean: TxInput = { ...input, source: undefined, importBatchId: undefined, importHash: undefined };
+    const clean: TxInput = { ...input, source: undefined, importBatchId: undefined, importHash: undefined, by: access.userId };
     if (id) {
       await assertCanWriteTransaction(db, access, id);
       await updateTransaction(db, id, clean);
@@ -71,7 +71,7 @@ export async function removeAccount(id: string) {
 }
 
 export async function updateBalance(input: { accountId: string; balance: number; date: string; note?: string }) {
-  return runAction((db, access) => (assertCanWrite(access, [input.accountId]), setAccountBalance(db, input)));
+  return runAction((db, access) => (assertCanWrite(access, [input.accountId]), setAccountBalance(db, { ...input, by: access.userId })));
 }
 
 export async function saveAccountGroup(id: string | null, input: { name: string; type: AccountGroupType }) {

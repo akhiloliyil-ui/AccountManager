@@ -27,8 +27,9 @@ export function categoryOptions(categories: CategoryRow[], kind: "income" | "exp
 
 export function TxRow({ tx, accountById, href }: { tx: TxView; accountById: Map<string, AccountView>; href?: string }) {
   const label = useCategoryLabel();
-  const from = accountById.get(tx.accountId)?.name ?? "Account";
-  const to = tx.toAccountId ? (accountById.get(tx.toAccountId)?.name ?? "Account") : null;
+  const { user } = useApp();
+  const from = accountById.get(tx.accountId)?.name ?? "Another account";
+  const to = tx.toAccountId ? (accountById.get(tx.toAccountId)?.name ?? "Another account") : null;
   const cat = tx.type === "transfer" ? { top: "Transfer", sub: null, emoji: null } : tx.type === "adjustment" ? { top: "Adjustment", sub: null, emoji: null } : label(tx.categoryId);
   const title = tx.note || cat.sub || cat.top;
 
@@ -58,6 +59,7 @@ export function TxRow({ tx, accountById, href }: { tx: TxView; accountById: Map<
           ) : (
             from
           )}
+          {tx.createdByName && tx.createdByName !== user.displayName && <span className="ml-1 shrink-0">· by {tx.createdByName}</span>}
           {tx.source === "import" && <span className="ml-1 rounded bg-surface-2 px-1">imported</span>}
           {tx.source === "basket" && <span className="ml-1 rounded bg-primary-soft px-1 text-primary-strong">basket</span>}
           {tx.scheduleId && <Repeat size={11} className="ml-1 shrink-0" aria-label="Scheduled" />}

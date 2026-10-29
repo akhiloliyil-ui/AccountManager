@@ -75,6 +75,23 @@ export function useApp(): AppContext {
   return ctx;
 }
 
+/**
+ * Greys out every button, checkbox and input inside for people without the access `need`s; links still work.
+ * The server checks every change anyway; this keeps them from trying.
+ */
+export function AccessGuard({ need, note, children }: { need: "write" | "admin"; note?: string; children: ReactNode }) {
+  const { canWrite, isAdmin } = useApp();
+  const allowed = need === "admin" ? isAdmin : canWrite;
+  return (
+    <>
+      {!allowed && note && <p className="mb-4 rounded-xl bg-surface-2 px-3 py-2 text-sm text-muted">{note}</p>}
+      <fieldset disabled={!allowed} className="contents">
+        {children}
+      </fieldset>
+    </>
+  );
+}
+
 /* ------------------------------------------------------------------ toasts */
 
 interface Toast {

@@ -321,6 +321,8 @@ export interface ConfirmPurchaseInput {
   date: string;
   categoryId?: string | null;
   note?: string;
+  /** The signed-in person paying. */
+  by?: string | null;
 }
 
 /**
@@ -368,6 +370,7 @@ export async function confirmPurchase(db: Db, input: ConfirmPurchaseInput) {
         note: input.note?.trim() || `Groceries${storeName ? ` at ${storeName}` : ""} · ${list.name}`,
         description,
         source: "basket",
+        createdBy: input.by ?? null,
       })
       .returning();
     const [purchase] = await tx

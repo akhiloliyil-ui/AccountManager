@@ -15,6 +15,13 @@
       "when": 1793278250861,
       "tag": "0001_wet_bloodaxe",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793279358353,
+      "tag": "0002_blushing_jean_grey",
+      "breakpoints": true
     }
   ]
 }

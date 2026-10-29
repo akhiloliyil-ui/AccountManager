@@ -11,7 +11,7 @@ import {
   type StatTx,
 } from "@gpa/core";
 import { rows as resultRows, type Db } from "../client";
-import { accountGroups, accounts, categories, currencies, transactions, type AccountGroupType } from "../schema";
+import { accountGroups, accounts, categories, currencies, transactions, users, type AccountGroupType } from "../schema";
 import { BANK_FEE_CATEGORY_ID } from "../seed-data";
 
 export class ValidationError extends Error {}
@@ -242,7 +242,7 @@ export async function deleteAccount(db: Db, id: string): Promise<void> {
  */
 export async function setAccountBalance(
   db: Db,
-  input: { accountId: string; balance: number; date: string; note?: string },
+  input: { accountId: string; balance: number; date: string; note?: string; by?: string | null },
 ): Promise<string | null> {
   const [account] = await db.select().from(accounts).where(eq(accounts.id, input.accountId));
   if (!account) fail("Account not found");
@@ -257,6 +257,7 @@ export async function setAccountBalance(
       accountId: input.accountId,
       amount: diff,
       note: input.note?.trim() || "Balance update",
+      createdBy: input.by ?? null,
     })
     .returning();
   return row!.id;
@@ -338,6 +339,8 @@ export interface TxInput {
   source?: TxRow["source"];
   importBatchId?: string | null;
   importHash?: string | null;
+  /** The signed-in person making the change. */
+  by?: string | null;
 }
 
 async function prepare(db: Db, input: TxInput) {
@@ -408,6 +411,7 @@ export async function createTransaction(db: Db, input: TxInput): Promise<string[
           scheduleCount: scheduleId ? p.count : null,
           importBatchId: input.importBatchId ?? null,
           importHash: input.importHash ?? null,
+          createdBy: input.by ?? null,
         })
         .returning();
       ids.push(row!.id);
@@ -428,6 +432,7 @@ async function insertFee(db: Db, transfer: TxRow, fee: number) {
     note: transfer.note ? `Fee: ${transfer.note}` : "Transfer fee",
     parentId: transfer.id,
     source: transfer.source,
+    createdBy: transfer.updatedBy ?? transfer.createdBy,
   });
 }
 
@@ -449,6 +454,8 @@ export async function updateTransaction(db: Db, id: string, input: Omit<TxInput,
         categoryId,
         note: input.note?.trim() ?? "",
         description: input.description?.trim() ?? "",
+        updatedBy: input.by ?? null,
+        updatedAt: new Date(),
       })
       .where(eq(transactions.id, id))
       .returning();
@@ -476,6 +483,9 @@ export interface TxView extends TxRow {
   amountBase: number;
   /** Fee booked against this transfer, in the source currency. */
   feeAmount: number;
+  /** Names of who added it and who last changed it, when known. */
+  createdByName: string | null;
+  updatedByName: string | null;
 }
 
 export interface TxFilter {
@@ -517,10 +527,12 @@ export async function listTransactions(db: Db, filter: TxFilter = {}): Promise<T
     .orderBy(desc(transactions.date), desc(transactions.createdAt))
     .limit(filter.limit ?? 5000);
 
-  const [{ byCode, base }, allAccounts] = await Promise.all([
+  const [{ byCode, base }, allAccounts, people] = await Promise.all([
     getCurrencies(db),
     db.select({ id: accounts.id, currency: accounts.currency }).from(accounts),
+    db.select({ id: users.id, name: users.displayName }).from(users),
   ]);
+  const nameOf = new Map(people.map((p) => [p.id, p.name]));
   const currencyOf = new Map(allAccounts.map((a) => [a.id, a.currency]));
   const transferIds = rows.filter((r) => r.tx.type === "transfer").map((r) => r.tx.id);
   const fees = transferIds.length
@@ -537,6 +549,8 @@ export async function listTransactions(db: Db, filter: TxFilter = {}): Promise<T
     toCurrency: tx.toAccountId ? (currencyOf.get(tx.toAccountId) ?? null) : null,
     amountBase: convertMinor(tx.amount, byCode.get(currency) ?? base, base),
     feeAmount: feeOf.get(tx.id) ?? 0,
+    createdByName: tx.createdBy ? (nameOf.get(tx.createdBy) ?? null) : null,
+    updatedByName: tx.updatedBy ? (nameOf.get(tx.updatedBy) ?? null) : null,
   }));
 }
 

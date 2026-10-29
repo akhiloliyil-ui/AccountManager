@@ -23,7 +23,7 @@ import {
   verifySession,
   type Access,
 } from "./services/auth";
-import { createAccount, createTransaction, getAccountDetail, getNetWorth, listAccounts, listTransactions, statTransactions } from "./services/money";
+import { createAccount, createTransaction, getAccountDetail, getNetWorth, listAccounts, listTransactions, statTransactions, updateTransaction } from "./services/money";
 import { groceryMonthSpend } from "./services/grocery";
 import { users } from "./schema";
 import { testDb } from "./test-utils";
@@ -187,6 +187,22 @@ describe("household members, roles and accounts", () => {
 
     expect(await resetOwnerPassword(h.db, "owner-reset-2026")).toBe("akhil");
     expect(await authenticate(h.db, "akhil", "owner-reset-2026")).not.toBeNull();
+  });
+});
+
+describe("who added and changed a transaction", () => {
+  it("records the person and keeps the record when they are removed", async () => {
+    const ownerRow = (await listUsers(h.db)).find((u) => u.isOwner)!;
+    const nia = (await listUsers(h.db)).find((u) => u.username === "nia")!;
+    const [cash] = await listAccounts(h.db);
+    const [id] = await createTransaction(h.db, { type: "expense", date: "2026-10-20", accountId: cash!.id, amount: 500, note: "Tea", by: nia.id });
+    await updateTransaction(h.db, id!, { type: "expense", date: "2026-10-20", accountId: cash!.id, amount: 600, note: "Tea", by: ownerRow.id });
+    let [tea] = await listTransactions(h.db, { q: "Tea" });
+    expect(tea).toMatchObject({ createdByName: "Nia", updatedByName: "Akhil", amount: 600 });
+
+    await deleteUser(h.db, owner, nia.id);
+    [tea] = await listTransactions(h.db, { q: "Tea" });
+    expect(tea).toMatchObject({ createdByName: null, updatedByName: "Akhil", amount: 600 });
   });
 });
 

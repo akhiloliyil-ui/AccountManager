@@ -202,6 +202,10 @@ export const transactions = pgTable(
     importHash: text("import_hash"),
     bookmarked: boolean("bookmarked").notNull().default(false),
     createdAt: createdAt(),
+    /** Who added it and who last changed it. Null for rows from before sign-ins, or when that person was removed. */
+    createdBy: text("created_by").references((): AnyPgColumn => users.id, { onDelete: "set null" }),
+    updatedBy: text("updated_by").references((): AnyPgColumn => users.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
   },
   (t) => [
     index("transactions_date_idx").on(t.date),

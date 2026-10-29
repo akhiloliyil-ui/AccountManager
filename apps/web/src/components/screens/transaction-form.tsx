@@ -21,6 +21,8 @@ export interface TransactionFormProps {
 
 type Schedule = NonNullable<TxInput["schedule"]>;
 
+const stamp = (d: Date | string) => new Date(d).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
 export function TransactionForm({ tx, accounts, defaults }: TransactionFormProps) {
   const router = useRouter();
   const { currency, categories, settings, canWrite } = useApp();
@@ -241,6 +243,13 @@ export function TransactionForm({ tx, accounts, defaults }: TransactionFormProps
       {editing && tx.scheduleId && (
         <p className="mt-3 text-sm text-muted">
           <Repeat size={14} className="mr-1 inline" /> Payment {tx.scheduleNo} of {tx.scheduleCount}. Changes apply to this one only.
+        </p>
+      )}
+      {tx && (tx.createdByName || tx.updatedByName) && (
+        <p className="mt-3 text-xs text-muted">
+          {tx.createdByName && `Added by ${tx.createdByName} on ${stamp(tx.createdAt)}`}
+          {tx.createdByName && tx.updatedByName && " · "}
+          {tx.updatedByName && tx.updatedAt && `Last changed by ${tx.updatedByName} on ${stamp(tx.updatedAt)}`}
         </p>
       )}
       {editing && tx.source === "basket" && <p className="mt-3 text-sm text-muted">Booked from a grocery basket. Deleting it puts the items back on the list as not bought.</p>}

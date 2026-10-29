@@ -92,10 +92,21 @@ test("a Write member sees and changes only their accounts, and can't reach admin
   await page.goto("/settings/currencies");
   await expect(page).toHaveURL(/\/settings$/);
 
-  // Her own account: she can add an expense to it.
+  // Her own account: she can add an expense to it, and everyone sees who added it.
   await page.goto("/transactions/new");
   await expect(page.getByLabel("Account")).toContainText("ESAF (NRI)");
   await expect(page.getByLabel("Account")).not.toContainText("Salary Account");
+  await page.getByLabel("Amount in INR").fill("250");
+  await page.getByPlaceholder("e.g. Monthly purchase").fill("Chai with friends");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByRole("link", { name: /Chai with friends/ })).toBeVisible();
+
+  const owner2 = await asOwner(browser);
+  await owner2.page.goto("/transactions");
+  await expect(owner2.page.getByRole("link", { name: /Chai with friends/ })).toContainText("by Priya");
+  await owner2.page.getByRole("link", { name: /Chai with friends/ }).click();
+  await expect(owner2.page.getByText(/Added by Priya on/)).toBeVisible();
+  await owner2.context.close();
 });
 
 test("a Read member can look but not change anything", async ({ browser, page }) => {
@@ -113,6 +124,11 @@ test("a Read member can look but not change anything", async ({ browser, page })
   await page.getByRole("link", { name: /SALARY OCT 2026/ }).first().click();
   await expect(page.getByText("You have read-only access")).toBeVisible();
   await expect(page.getByRole("button", { name: "Save", exact: true })).toBeHidden();
+
+  // Grocery lists are shared, but read-only for him.
+  await page.goto("/lists/current");
+  await expect(page.getByText("View only: your access is read-only.")).toBeVisible();
+  await expect(page.getByRole("checkbox").first()).toBeDisabled();
 });
 
 test("people are limited to five, and changing a password signs other devices out", async ({ browser, page }) => {

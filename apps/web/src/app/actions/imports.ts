@@ -47,7 +47,7 @@ export async function previewStatementAction(accountId: string, rows: StatementR
 
 export async function commitStatementAction(input: { accountId: string; filename: string; rowCount: number; lines: CommitLine[] }) {
   // Lines booked as transfers touch a second account, which must be the person's too.
-  return runAction((db, access) => (assertCanWrite(access, [input.accountId, ...input.lines.map((l) => l.transferAccountId)]), commitStatement(db, input)));
+  return runAction((db, access) => (assertCanWrite(access, [input.accountId, ...input.lines.map((l) => l.transferAccountId)]), commitStatement(db, { ...input, by: access.userId })));
 }
 
 export async function undoImportAction(batchId: string) {

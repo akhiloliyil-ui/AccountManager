@@ -88,7 +88,7 @@ export interface CommitLine {
 /** Saves the chosen lines. Lines already imported (same hash) are skipped, so re-running is harmless. */
 export async function commitStatement(
   db: Db,
-  input: { accountId: string; filename: string; rowCount: number; lines: CommitLine[] },
+  input: { accountId: string; filename: string; rowCount: number; lines: CommitLine[]; by?: string | null },
 ): Promise<{ batchId: string; imported: number; skipped: number }> {
   const [account] = await db.select().from(accounts).where(eq(accounts.id, input.accountId));
   if (!account) throw new ValidationError("Account not found");
@@ -113,6 +113,7 @@ export async function commitStatement(
         source: "import" as const,
         importBatchId: batch!.id,
         importHash: line.hash,
+        createdBy: input.by ?? null,
       };
       const values =
         line.transferAccountId && line.transferAccountId !== input.accountId
