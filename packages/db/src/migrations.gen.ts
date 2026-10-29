@@ -23,5 +23,9 @@ export const migrations: { tag: string; sql: string }[] = [
   {
     "tag": "0005_motionless_norrin_radd",
     "sql": "CREATE TABLE \"import_formats\" (\n\t\"id\" text PRIMARY KEY NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"signature\" text NOT NULL,\n\t\"mapping\" jsonb NOT NULL,\n\t\"account_id\" text,\n\t\"use_count\" integer DEFAULT 1 NOT NULL,\n\t\"last_used_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL\n);\n--> statement-breakpoint\nALTER TABLE \"import_formats\" ADD CONSTRAINT \"import_formats_account_id_accounts_id_fk\" FOREIGN KEY (\"account_id\") REFERENCES \"public\".\"accounts\"(\"id\") ON DELETE set null ON UPDATE no action;--> statement-breakpoint\nCREATE UNIQUE INDEX \"import_formats_signature_key\" ON \"import_formats\" USING btree (\"signature\");"
+  },
+  {
+    "tag": "0006_faulty_the_hood",
+    "sql": "CREATE TABLE \"push_subscriptions\" (\n\t\"id\" text PRIMARY KEY NOT NULL,\n\t\"user_id\" text NOT NULL,\n\t\"endpoint\" text NOT NULL,\n\t\"p256dh\" text NOT NULL,\n\t\"auth\" text NOT NULL,\n\t\"label\" text DEFAULT '' NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"last_sent_at\" timestamp with time zone\n);\n--> statement-breakpoint\nALTER TABLE \"push_subscriptions\" ADD CONSTRAINT \"push_subscriptions_user_id_users_id_fk\" FOREIGN KEY (\"user_id\") REFERENCES \"public\".\"users\"(\"id\") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint\nCREATE UNIQUE INDEX \"push_subscriptions_endpoint_key\" ON \"push_subscriptions\" USING btree (\"endpoint\");--> statement-breakpoint\nCREATE INDEX \"push_subscriptions_user_idx\" ON \"push_subscriptions\" USING btree (\"user_id\");"
   }
 ];

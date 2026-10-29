@@ -43,6 +43,13 @@
       "when": 1793282267424,
       "tag": "0005_motionless_norrin_radd",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793283112360,
+      "tag": "0006_faulty_the_hood",
+      "breakpoints": true
     }
   ]
 }

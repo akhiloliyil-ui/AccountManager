@@ -30,7 +30,7 @@ export default defineConfig({
   webServer: {
     command: `rm -rf .data/e2e && next start -p ${PORT}`,
     url: `http://localhost:${PORT}/login`,
-    env: { PGLITE_DIR: ".data/e2e", DATABASE_URL: "", TZ: "Asia/Dubai" },
+    env: { PGLITE_DIR: ".data/e2e", DATABASE_URL: "", TZ: "Asia/Dubai", CRON_SECRET: "e2e-cron-secret", VAPID_PUBLIC_KEY: "", VAPID_PRIVATE_KEY: "" },
     reuseExistingServer: false,
     timeout: 120_000,
   },

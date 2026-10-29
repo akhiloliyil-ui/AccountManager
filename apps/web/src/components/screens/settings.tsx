@@ -80,7 +80,7 @@ export const ROLE_LABELS = { admin: "Admin", write: "Write", read: "Read only" }
 
 /* ------------------------------------------------------------------ my account */
 
-export function SecuritySettings() {
+export function SecuritySettings({ children }: { children?: ReactNode }) {
   const { user, isAdmin } = useApp();
   const { pending, run } = useAction();
   const [current, setCurrent] = useState("");
@@ -129,6 +129,7 @@ export function SecuritySettings() {
           Sign out my other devices
         </Button>
       </Card>
+      {children}
       {isAdmin && (
         <Card className="flex flex-wrap items-center gap-3 p-4">
           <div className="min-w-0 flex-1">

@@ -73,7 +73,7 @@ export interface Access {
   accountIds: string[] | null;
 }
 
-async function accessFor(db: Db, user: UserRow): Promise<Access> {
+export async function accessFor(db: Db, user: UserRow): Promise<Access> {
   const all = user.role === "admin" || user.allAccounts;
   const accountIds = all
     ? null

@@ -17,5 +17,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Everything except the sign-in page and what an installed app needs before signing in.
-  matcher: ["/((?!login|_next/static|_next/image|favicon\\.ico|manifest\\.webmanifest|sw\\.js|offline\\.html|icon|apple-touch-icon).*)"],
+  // The daily job has no cookie; it checks its own secret.
+  matcher: ["/((?!login|api/cron|_next/static|_next/image|favicon\\.ico|manifest\\.webmanifest|sw\\.js|offline\\.html|icon|apple-touch-icon).*)"],
 };

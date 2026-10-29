@@ -80,6 +80,25 @@ export const userAccounts = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.accountId] }), index("user_accounts_account_idx").on(t.accountId)],
 );
 
+/** Devices that asked for notifications (Web Push). Removed when the browser says they're gone. */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    /** Browser and platform, to tell devices apart in the list. */
+    label: text("label").notNull().default(""),
+    createdAt: createdAt(),
+    lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("push_subscriptions_endpoint_key").on(t.endpoint), index("push_subscriptions_user_idx").on(t.userId)],
+);
+
 /* ------------------------------------------------------------------ money */
 
 export const currencies = pgTable("currencies", {

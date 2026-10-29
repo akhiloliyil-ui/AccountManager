@@ -268,3 +268,17 @@ test("bills list upcoming installments to confirm or skip", async ({ page }) => 
   await expect(shown("(2/4)")).toHaveCount(0);
   await expect(shown("(4/4)")).toHaveCount(0);
 });
+
+test("the daily job only runs with its secret; My account offers bill reminders", async ({ page, playwright }) => {
+  const anon = await playwright.request.newContext({ baseURL: "http://localhost:3210" });
+  expect((await anon.get("/api/cron/daily")).status()).toBe(401);
+  expect((await anon.get("/api/cron/daily", { headers: { authorization: "Bearer wrong" } })).status()).toBe(401);
+  const ok = await anon.get("/api/cron/daily", { headers: { authorization: "Bearer e2e-cron-secret" } });
+  expect(ok.status()).toBe(200);
+  expect(await ok.json()).toMatchObject({ reminders: "push not configured" });
+  await anon.dispose();
+
+  await page.goto("/settings/security");
+  await expect(page.getByText("Bill reminders")).toBeVisible();
+  await expect(page.getByText("Notifications aren't set up on this server.")).toBeVisible();
+});

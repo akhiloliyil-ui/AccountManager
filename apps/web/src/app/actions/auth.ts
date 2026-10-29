@@ -3,6 +3,11 @@
 import { redirect } from "next/navigation";
 import {
   assertAdmin,
+  deletePushSubscription,
+  listPushSubscriptions,
+  recordPushResults,
+  savePushSubscription,
+  type PushSubscriptionInput,
   decodeBackup,
   MAX_UPLOAD_BYTES,
   restoreBackup,
@@ -24,6 +29,7 @@ import type { ActionResult } from "@/lib/action-result";
 import { runAction } from "@/lib/server/action";
 import { endSession, safeNext, signInThrottle, startSession } from "@/lib/server/auth";
 import { getDb } from "@/lib/server/db";
+import { pushConfigured, webPushSender } from "@/lib/server/push";
 
 const wait = (ms: number) =>
   `Too many wrong passwords. Try again in ${ms < 60_000 ? `${Math.ceil(ms / 1000)} seconds` : `${Math.ceil(ms / 60_000)} minutes`}.`;
@@ -136,5 +142,32 @@ export async function restoreBackupAction(form: FormData) {
     if (!(file instanceof File) || !file.size) throw new ValidationError("Choose a backup file");
     if (file.size > MAX_UPLOAD_BYTES) throw new ValidationError("Backup files must be 15 MB or smaller");
     return restoreBackup(db, access, decodeBackup(new Uint8Array(await file.arrayBuffer())));
+  });
+}
+
+/* ------------------------------------------------------------------ notifications */
+
+export async function subscribePushAction(sub: PushSubscriptionInput) {
+  return runAction((db, access) => savePushSubscription(db, access.userId, sub));
+}
+
+export async function unsubscribePushAction(endpoint: string) {
+  return runAction((db, access) => deletePushSubscription(db, access.userId, endpoint));
+}
+
+/** Sends a test notification to this person's devices. */
+export async function testPushAction() {
+  return runAction(async (db, access) => {
+    if (!pushConfigured()) throw new ValidationError("Notifications aren't set up on this server");
+    const subs = await listPushSubscriptions(db, access.userId);
+    if (!subs.length) throw new ValidationError("Turn notifications on first");
+    const message = { title: "GPA notifications are on", body: "You'll get a morning reminder when bills need confirming.", url: "/transactions/bills", tag: "test" };
+    const results = await Promise.all(subs.map((s) => webPushSender(s, message)));
+    await recordPushResults(
+      db,
+      subs.filter((_, i) => results[i] === "sent").map((s) => s.id),
+      subs.filter((_, i) => results[i] === "gone").map((s) => s.id),
+    );
+    return results.filter((r) => r === "sent").length;
   });
 }

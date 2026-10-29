@@ -1,7 +1,7 @@
 // GPA service worker. Financial data is never cached: pages always come from the server,
 // so balances can't be stale. Only fingerprinted build assets are cached, and an offline
 // page is shown when the server can't be reached.
-const VERSION = "gpa-v1";
+const VERSION = "gpa-v2";
 const STATIC = `${VERSION}-static`;
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [OFFLINE_URL, "/icon.svg", "/icon-192.png"];
@@ -47,4 +47,34 @@ self.addEventListener("fetch", (event) => {
       }),
     );
   }
+});
+
+// Notifications: the daily bill reminder (and the test one from My account).
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { body: event.data ? event.data.text() : "" };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "GPA", {
+      body: data.body || "",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      tag: data.tag || "gpa",
+      data: { url: data.url || "/" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = new URL(event.notification.data?.url || "/", self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((wins) => {
+      const open = wins.find((w) => w.url.startsWith(self.location.origin));
+      return open ? open.navigate(url).then((w) => (w || open).focus()) : self.clients.openWindow(url);
+    }),
+  );
 });
