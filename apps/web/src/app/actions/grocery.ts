@@ -2,6 +2,8 @@
 
 import {
   addItem,
+  getCatalog,
+  ValidationError,
   assertAdmin,
   assertCanWrite,
   confirmPurchase,
@@ -19,7 +21,9 @@ import {
   type GrocerySettings,
   type ListType,
 } from "@gpa/db";
+import { matchReceipt } from "@gpa/core";
 import { runAction } from "@/lib/server/action";
+import { readReceipt } from "@/lib/server/receipt";
 
 /* Grocery lists, prices and offers are shared by the household: Write users and admins change them, Read users
    only look. Paying for a basket also needs access to the account it is paid from. */
@@ -83,4 +87,55 @@ export async function createProductAction(input: {
   soldBy?: "each" | "kg";
 }) {
   return runAction((db, access) => (assertCanWrite(access), createProduct(db, input)));
+}
+
+/* ------------------------------------------------------------------ receipts */
+
+const RECEIPT_MAX_BYTES = 4 * 1024 * 1024;
+
+/** Reads a receipt photo with AI and matches it to the catalogue. The browser shrinks photos before sending. */
+export async function scanReceiptAction(form: FormData) {
+  return runAction(async (db, access) => {
+    assertCanWrite(access);
+    const file = form.get("file");
+    if (!(file instanceof File) || !file.size) throw new ValidationError("Take or choose a photo of the receipt");
+    if (file.size > RECEIPT_MAX_BYTES) throw new ValidationError("That photo is too large. Try again; the app shrinks photos before sending.");
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const isJpeg = bytes[0] === 0xff && bytes[1] === 0xd8;
+    const isPng = bytes[0] === 0x89 && bytes[1] === 0x50;
+    const isWebp = new TextDecoder().decode(bytes.slice(8, 12)) === "WEBP";
+    if (!isJpeg && !isPng && !isWebp) throw new ValidationError("Use a JPEG, PNG or WebP photo");
+
+    let reading;
+    try {
+      reading = await readReceipt(bytes);
+    } catch (error) {
+      console.error("[gpa] receipt reading failed", error);
+      const text = String(error instanceof Error ? error.message : error);
+      if (/credit card|customer_verification|billing|quota|credits/i.test(text)) {
+        throw new ValidationError("Receipt reading needs AI Gateway billing switched on in Vercel (a card on file). Enter the amount by hand for now.");
+      }
+      if (/auth|api key|oidc|credential|unauthori[sz]ed|forbidden/i.test(text)) {
+        throw new ValidationError("Receipt reading isn't set up on this server yet (AI Gateway credentials). Enter the amount by hand.");
+      }
+      throw new ValidationError("Couldn't read the receipt. Try a sharper, well-lit photo, or enter the amount by hand.");
+    }
+    if (!reading.items.length && reading.total === null) throw new ValidationError("That doesn't look like a receipt. Try another photo.");
+    const catalog = await getCatalog(db);
+    return matchReceipt(reading, { stores: catalog.stores, products: catalog.products });
+  });
+}
+
+/** Records shelf prices from a receipt for the products it matched. */
+export async function saveReceiptPricesAction(storeId: string, prices: { productId: string; priceFils: number }[]) {
+  return runAction(async (db, access) => {
+    assertCanWrite(access);
+    let saved = 0;
+    for (const p of prices.slice(0, 200)) {
+      if (!Number.isInteger(p.priceFils) || p.priceFils <= 0) continue;
+      await setShelfPrice(db, { productId: p.productId, storeId, priceFils: p.priceFils });
+      saved += 1;
+    }
+    return saved;
+  });
 }

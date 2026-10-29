@@ -87,6 +87,8 @@ test("basket to expense: ticked grocery items become one expense and count again
   await page.getByRole("button", { name: "Confirm purchase" }).click();
 
   const sheet = page.getByRole("dialog");
+  // Scanning needs the AI service, so the test only checks it's offered; entry by hand still works.
+  await expect(sheet.getByRole("button", { name: "Scan receipt" })).toBeVisible();
   await sheet.getByLabel("Store").selectOption("lulu");
   await sheet.getByLabel("Amount paid (AED)").fill("38.00");
   await sheet.getByRole("button", { name: "Book expense" }).click();

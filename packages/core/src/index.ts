@@ -12,3 +12,4 @@ export * from "./schedule";
 export * from "./statement";
 export * from "./categorize";
 export * from "./offer-text";
+export * from "./receipt";
