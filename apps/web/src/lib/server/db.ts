@@ -1,6 +1,7 @@
 import { connection } from "next/server";
-import { createDb, seedDemo, type Db, type DbHandle } from "@gpa/db";
-import { requireSession } from "./auth";
+import { redirect } from "next/navigation";
+import { createDb, seedDemo, type Access, type Db, type DbHandle } from "@gpa/db";
+import { requireAccess } from "./auth";
 
 /**
  * One database per server process. DATABASE_URL selects a real PostgreSQL server;
@@ -25,12 +26,20 @@ export async function getDb(): Promise<Db> {
 }
 
 /**
- * For Server Components and route handlers: waits for the request (data is never prerendered), checks the
- * session and returns the database. Signed-out requests are redirected to /login before any data is read.
+ * For Server Components and route handlers: waits for the request (data is never prerendered), checks the session
+ * and returns the database with the signed-in person's access. Signed-out requests are redirected to /login before
+ * any data is read. Pass `scope` (their accounts, or null for all) to every read service.
  */
-export async function requestDb(): Promise<Db> {
+export async function requestSession(): Promise<{ db: Db; access: Access; scope: Access["accountIds"] }> {
   await connection();
   const db = await getDb();
-  await requireSession(db);
-  return db;
+  const access = await requireAccess(db);
+  return { db, access, scope: access.accountIds };
+}
+
+/** For admin-only pages: everyone else is sent to Settings. */
+export async function requestAdmin(): Promise<{ db: Db; access: Access }> {
+  const session = await requestSession();
+  if (session.access.role !== "admin") redirect("/settings");
+  return session;
 }

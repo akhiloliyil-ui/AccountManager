@@ -18,5 +18,7 @@ export type {
   Settings,
   TxInput,
   TxType,
+  UserRole,
+  UserView,
   TxView,
 } from "@gpa/db";

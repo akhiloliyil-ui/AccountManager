@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { clsx } from "clsx";
-import { ArrowDown, ArrowUp, ChevronRight, Coins, Download, FolderTree, Landmark, LockKeyhole, LogOut, Pencil, Plus, RefreshCw, ShoppingBasket, Trash2, Wand2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, Coins, Download, FolderTree, Landmark, LogOut, Pencil, Plus, RefreshCw, ShoppingBasket, Trash2, UserRound, Users, Wand2 } from "lucide-react";
 import { aedToFils } from "@gpa/core";
-import { changePasscodeAction, signOut, signOutOtherDevices } from "@/app/actions/auth";
+import { changePasswordAction, signOut, signOutEveryoneAction, signOutMyOtherDevices } from "@/app/actions/auth";
 import { updateGrocerySettingsAction } from "@/app/actions/grocery";
 import {
   addNewCurrency,
@@ -30,32 +30,42 @@ import { GROUP_TYPE_LABELS } from "./accounts";
 import { BackLink, Badge, Button, Card, Field, IconButton, Input, PageHeader, Segmented, Select, Sheet, Switch } from "../ui";
 
 export function SettingsHub() {
-  const items: { href: string; icon: ReactNode; title: string; body: string; download?: boolean }[] = [
-    { href: "/settings/categories", icon: <FolderTree size={18} />, title: "Categories", body: "Income and expense categories and subcategories" },
-    { href: "/settings/account-groups", icon: <Landmark size={18} />, title: "Account groups", body: "Cash, cards, savings, loans, investments…" },
-    { href: "/settings/currencies", icon: <Coins size={18} />, title: "Currencies", body: "AED, INR and others, base currency and exchange rates" },
-    { href: "/settings/rules", icon: <Wand2 size={18} />, title: "Auto-categorise rules", body: "How imported statement lines get their category" },
-    { href: "/settings/grocery", icon: <ShoppingBasket size={18} />, title: "Grocery", body: "Budget, stores, purchase category and default account" },
-    { href: "/settings/security", icon: <LockKeyhole size={18} />, title: "Passcode & sign-in", body: "Change the passcode, sign out other devices" },
-    { href: "/api/export/transactions", icon: <Download size={18} />, title: "Export transactions (CSV)", body: "Every transaction, for backup or spreadsheets", download: true },
+  const { user, isAdmin } = useApp();
+  const items: { href: string; icon: ReactNode; title: string; body: string; download?: boolean; admin?: boolean }[] = [
+    { href: "/settings/security", icon: <UserRound size={18} />, title: "My account", body: `${user.displayName} (${user.username}) · change your password, sign out devices` },
+    { href: "/settings/users", icon: <Users size={18} />, title: "People & access", body: "Add up to 4 people, with Read, Write or Admin access to chosen accounts", admin: true },
+    { href: "/settings/categories", icon: <FolderTree size={18} />, title: "Categories", body: "Income and expense categories and subcategories", admin: true },
+    { href: "/settings/account-groups", icon: <Landmark size={18} />, title: "Account groups", body: "Cash, cards, savings, loans, investments…", admin: true },
+    { href: "/settings/currencies", icon: <Coins size={18} />, title: "Currencies", body: "AED, INR and others, base currency and exchange rates", admin: true },
+    { href: "/settings/rules", icon: <Wand2 size={18} />, title: "Auto-categorise rules", body: "How imported statement lines get their category", admin: true },
+    { href: "/settings/grocery", icon: <ShoppingBasket size={18} />, title: "Grocery", body: "Budget, stores, purchase category and default account", admin: true },
+    {
+      href: "/api/export/transactions",
+      icon: <Download size={18} />,
+      title: "Export transactions (CSV)",
+      body: isAdmin ? "Every transaction, for backup or spreadsheets" : "Transactions on the accounts you can see",
+      download: true,
+    },
   ];
   return (
     <div>
-      <PageHeader title="Settings" />
+      <PageHeader title="Settings" subtitle={`Signed in as ${user.displayName} · ${ROLE_LABELS[user.role]}`} />
       <InstallCard />
       <Card className="divide-y divide-border">
-        {items.map((i) => (
-          <Link key={i.href} href={i.href} prefetch={i.download ? false : undefined} className="flex items-center gap-4 px-4 py-3.5 hover:bg-surface-2">
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-surface-2 text-muted">{i.icon}</span>
-            <div className="min-w-0 flex-1">
-              <p className="font-medium">{i.title}</p>
-              <p className="text-sm text-muted">{i.body}</p>
-            </div>
-            <ChevronRight size={16} className="text-muted" />
-          </Link>
-        ))}
+        {items
+          .filter((i) => !i.admin || isAdmin)
+          .map((i) => (
+            <Link key={i.href} href={i.href} prefetch={i.download ? false : undefined} className="flex items-center gap-4 px-4 py-3.5 hover:bg-surface-2">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-surface-2 text-muted">{i.icon}</span>
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">{i.title}</p>
+                <p className="text-sm text-muted">{i.body}</p>
+              </div>
+              <ChevronRight size={16} className="text-muted" />
+            </Link>
+          ))}
       </Card>
-      <p className="mt-4 text-xs text-muted">Data is stored in PostgreSQL. Back up the database (or this CSV) regularly.</p>
+      {isAdmin && <p className="mt-4 text-xs text-muted">Data is stored in PostgreSQL. Back up the database (or this CSV) regularly.</p>}
       <form action={signOut} className="mt-6">
         <Button type="submit" variant="secondary">
           <LogOut size={16} /> Sign out
@@ -65,9 +75,12 @@ export function SettingsHub() {
   );
 }
 
-/* ------------------------------------------------------------------ security */
+export const ROLE_LABELS = { admin: "Admin", write: "Write", read: "Read only" } as const;
+
+/* ------------------------------------------------------------------ my account */
 
 export function SecuritySettings() {
+  const { user, isAdmin } = useApp();
   const { pending, run } = useAction();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
@@ -75,50 +88,64 @@ export function SecuritySettings() {
   return (
     <div className="space-y-4">
       <BackLink href="/settings">Settings</BackLink>
-      <PageHeader title="Passcode & sign-in" subtitle="One passcode for the household. Devices stay signed in for 60 days." />
+      <PageHeader title="My account" subtitle={`${user.displayName} · username ${user.username} · ${ROLE_LABELS[user.role]}. Devices stay signed in for 60 days.`} />
       <Card className="p-4">
-        <p className="mb-3 font-medium">Change passcode</p>
+        <p className="mb-3 font-medium">Change password</p>
         <form
           className="grid gap-3 sm:grid-cols-3"
           onSubmit={(e) => {
             e.preventDefault();
-            run(() => changePasscodeAction(current, next, repeat), {
-              success: "Passcode changed. Other devices will need the new one.",
+            run(() => changePasswordAction(current, next, repeat), {
+              success: "Password changed. Your other devices will need the new one.",
               onDone: () => [setCurrent, setNext, setRepeat].forEach((set) => set("")),
             });
           }}
         >
-          <Field label="Current passcode">
+          <Field label="Current password">
             <Input type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} required />
           </Field>
-          <Field label="New passcode">
-            <Input type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} required minLength={6} />
+          <Field label="New password">
+            <Input type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} required minLength={8} />
           </Field>
-          <Field label="Repeat new passcode">
+          <Field label="Repeat new password">
             <Input type="password" autoComplete="new-password" value={repeat} onChange={(e) => setRepeat(e.target.value)} required />
           </Field>
           <Button type="submit" className="sm:col-span-3 sm:justify-self-start" disabled={pending}>
-            Change passcode
+            Change password
           </Button>
         </form>
       </Card>
       <Card className="flex flex-wrap items-center gap-3 p-4">
         <div className="min-w-0 flex-1">
           <p className="font-medium">Lost a phone?</p>
-          <p className="text-sm text-muted">Sign out every other device. This one stays signed in.</p>
+          <p className="text-sm text-muted">Sign yourself out on every other device. This one stays signed in.</p>
         </div>
         <Button
           variant="secondary"
           disabled={pending}
-          onClick={() => confirm("Sign out every other device?") && run(() => signOutOtherDevices(), { success: "Other devices signed out" })}
+          onClick={() => confirm("Sign out your other devices?") && run(() => signOutMyOtherDevices(), { success: "Your other devices are signed out" })}
         >
-          Sign out other devices
+          Sign out my other devices
         </Button>
       </Card>
+      {isAdmin && (
+        <Card className="flex flex-wrap items-center gap-3 p-4">
+          <div className="min-w-0 flex-1">
+            <p className="font-medium">Sign everyone out</p>
+            <p className="text-sm text-muted">Every person, on every device, signs in again. You stay signed in here.</p>
+          </div>
+          <Button
+            variant="secondary"
+            disabled={pending}
+            onClick={() => confirm("Sign everyone out on every device?") && run(() => signOutEveryoneAction(), { success: "Everyone else is signed out" })}
+          >
+            Sign everyone out
+          </Button>
+        </Card>
+      )}
     </div>
   );
 }
-
 
 function Mover({ ids, index, table }: { ids: string[]; index: number; table: "categories" | "account_groups" }) {
   const { pending, run } = useAction();

@@ -2,7 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 const PORT = 3210;
 export const STATE = "e2e/.auth/state.json";
-export const PASSCODE = "e2e-household-pass";
+export const OWNER = { username: "akhil", password: "e2e-owner-pass-2026" };
 
 /**
  * End-to-end tests against a production build and a throwaway embedded database.

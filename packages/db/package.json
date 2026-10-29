@@ -14,7 +14,7 @@
     "db:generate": "drizzle-kit generate && node scripts/bundle-migrations.mjs",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed-demo": "tsx scripts/seed-demo.ts",
-    "passcode:reset": "tsx scripts/reset-passcode.ts"
+    "owner:reset": "tsx scripts/reset-owner.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.13",

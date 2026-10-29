@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { clsx } from "clsx";
 import { ChartPie, FileSpreadsheet, House, Landmark, NotebookText, Plus, Settings, ShoppingBasket } from "lucide-react";
+import { useShellUser } from "./providers";
 
 const tabs = [
   { href: "/", label: "Home", icon: House, match: ["/"] },
@@ -36,13 +37,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Suspense>
 
           <div className="ml-auto flex items-center gap-2">
-            <Link
-              href="/import"
-              className="inline-flex h-9 items-center gap-2 rounded-xl border border-border bg-surface px-3 text-sm font-semibold hover:bg-surface-2"
-            >
-              <FileSpreadsheet size={16} />
-              <span className="hidden sm:inline">Import</span>
-            </Link>
+            <ImportLink />
             <Link
               href="/settings"
               aria-label="Settings"
@@ -122,11 +117,27 @@ function TabBar({ pathname }: { pathname: string | null }) {
   );
 }
 
+/** Statement import is for people who can change accounts. */
+function ImportLink() {
+  const user = useShellUser();
+  if (!user || user.role === "read") return null;
+  return (
+    <Link
+      href="/import"
+      className="inline-flex h-9 items-center gap-2 rounded-xl border border-border bg-surface px-3 text-sm font-semibold hover:bg-surface-2"
+    >
+      <FileSpreadsheet size={16} />
+      <span className="hidden sm:inline">Import</span>
+    </Link>
+  );
+}
+
 /** Mobile floating "+": a new transaction on money screens, this week's list on grocery screens. */
 function QuickAdd() {
   const pathname = usePathname();
+  const user = useShellUser();
   const hidden = ["/transactions/", "/lists/", "/offers/import", "/import", "/settings"].some((p) => pathname.startsWith(p));
-  if (hidden) return null;
+  if (hidden || !user || user.role === "read") return null;
   const grocery = isActive(pathname, groceryPaths);
 
   return (

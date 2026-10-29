@@ -36,6 +36,50 @@ export const settings = pgTable("settings", {
   value: jsonb("value").notNull(),
 });
 
+/* ------------------------------------------------------------------ users */
+
+export const USER_ROLES = ["admin", "write", "read"] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
+/** People who can sign in: the owner plus up to four more. */
+export const users = pgTable(
+  "users",
+  {
+    id: id(),
+    /** Sign-in name, stored lowercase. */
+    username: text("username").notNull(),
+    displayName: text("display_name").notNull(),
+    /** scrypt hash; the password itself is never stored. */
+    passwordHash: text("password_hash").notNull(),
+    role: text("role", { enum: USER_ROLES }).notNull(),
+    /** The first admin. Can't be removed or demoted, so the household can't lock itself out. */
+    isOwner: boolean("is_owner").notNull().default(false),
+    /** Every account, including ones added later. Admins always have this. */
+    allAccounts: boolean("all_accounts").notNull().default(false),
+    /** Part of every session token; bumping it signs this user out everywhere. */
+    sessionVersion: integer("session_version").notNull().default(1),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("users_username_key").on(t.username),
+    check("users_role_check", sql`${t.role} in ('admin', 'write', 'read')`),
+  ],
+);
+
+/** Accounts a user without allAccounts may see (read) or also change (write). */
+export const userAccounts = pgTable(
+  "user_accounts",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    accountId: text("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.accountId] }), index("user_accounts_account_idx").on(t.accountId)],
+);
+
 /* ------------------------------------------------------------------ money */
 
 export const currencies = pgTable("currencies", {

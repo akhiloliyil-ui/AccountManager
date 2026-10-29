@@ -65,27 +65,40 @@ Any PostgreSQL 14+ works (Neon, RDS, Supabase…). Migrations run under an advis
 instances can start together. Set `TZ` (for example `Asia/Dubai`) so "today", this week and this month match
 your household.
 
-### Passcode
+### People and access
 
-GPA is protected by **one passcode for the household**. The first visit asks you to create it, so set it before
-the app is reachable by anyone else. Devices stay signed in for 60 days.
+Up to **5 people** sign in with their own username and password: the owner plus 4 more. The first visit creates
+the owner, so do that before the app is reachable by anyone else. Devices stay signed in for 60 days.
 
-- **Settings → Passcode & sign-in:** change the passcode (this signs out every other device), sign out other
-  devices if a phone is lost, or sign out.
+| Access | What they can do |
+|---|---|
+| **Read** | See their chosen accounts, those accounts' transactions, and reports. Change nothing. |
+| **Write** | Also add, edit and delete transactions on their accounts, import statements into them, and use grocery lists, prices and offers. |
+| **Admin** | Everything, on every account: people, accounts, categories, currencies, rules and settings. |
+
+- **Settings → People & access** (admins): add a person, pick Read, Write or Admin, and choose their accounts or
+  "All accounts, including new ones". You can also edit them, set a new password, sign them out or remove them.
+  Changing someone's access signs them out, so the change applies at once.
+- **Totals follow access.** Home, net worth, stats, debts, budget and the CSV export only count the accounts a
+  person can see. A transfer between one of their accounts and a hidden one shows their side only, and they can't
+  edit it. Grocery lists, the catalogue, prices and offers are shared by everyone.
+- **Settings → My account** (everyone): change your password (your other devices are signed out), or sign out
+  your other devices. Admins can also sign everyone out.
+- **The owner** is always an admin and can't be removed. Only the owner can reset the owner's password.
 - **How it's protected:**
-  - The passcode is stored only as a scrypt hash.
+  - Passwords are stored only as scrypt hashes.
   - Sessions are HMAC-signed, HTTP-only cookies, marked Secure over HTTPS.
-  - Every page, data download and Server Action checks the session on the server.
-  - Wrong guesses lock sign-in for 30 seconds after 5 misses, doubling up to 15 minutes.
-- **Reset the passcode** if it's forgotten. Run this on the machine that holds the database (stop the app first
-  when using the embedded database). The next visit asks for a new passcode:
+  - Every page, data download and Server Action checks the session, the role and the accounts on the server. The
+    UI only hides what a person can't use.
+  - Wrong passwords lock that username for 30 seconds after 5 misses, doubling up to 15 minutes.
+- **Forgot the owner password?** Run this on the machine that holds the database (stop the app first when using
+  the embedded database). Anyone else asks an admin for a new password.
 
   ```sh
-  npm run passcode:reset
+  GPA_NEW_PASSWORD='a new long password' npm run owner:reset
   ```
 
-- **Exposing it to the internet:** use HTTPS and a long passcode. It's a single shared passcode, not per-person
-  accounts.
+- **Exposing it to the internet:** use HTTPS and long passwords.
 
 ### Install it on your phone
 
@@ -114,13 +127,14 @@ npm run e2e            # production build + browser tests in your installed Goog
   fees, installments, revaluation, net worth after a base-currency change, debts, statement import and undo
   (including a real `.xlsx` workbook), the PDF pipeline on a real PDF, and basket-to-expense, including releasing
   items when the expense is deleted.
-- `packages/db` also covers the passcode: hashing, one-time setup, session signing, expiry and tampering, signing
-  devices out, and the sign-in throttle.
-- `apps/web`: unit tests for the amount calculator. The Playwright end-to-end suite first creates the passcode,
+- `packages/db` also covers people and access: one-time owner setup, password hashing, session signing, expiry,
+  tampering and revocation, the 5-person limit, roles, and every report limited to a person's accounts.
+- `apps/web`: unit tests for the amount calculator. The Playwright end-to-end suite first creates the owner,
   then walks the app as a new user would: accounts, expense, cross-currency transfer, installments, basket purchase, statement import twice, PDF
   publish, stats, categories, CSV export, the install manifest and icons, the service worker and the offline page. A final group checks that
-  a signed-out browser, a forged cookie and a Server Action without a session can't reach any data, and that
-  changing the passcode signs other devices out.
+  a signed-out browser, a forged cookie and a Server Action without a session can't reach any data; that a Write
+  member sees only their accounts and no admin settings; that a Read member can't change anything; the 5-person
+  limit; and that changing a password signs other devices out.
 
 ## Structure
 

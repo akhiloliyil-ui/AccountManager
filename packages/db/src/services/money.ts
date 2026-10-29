@@ -143,16 +143,26 @@ export async function accountMovements(db: Db, asOf: string): Promise<Map<string
   return new Map(resultRows<{ id: string; delta: number }>(result).map((r) => [r.id, Number(r.delta)]));
 }
 
+/**
+ * Accounts a signed-in user may see: null or undefined means every account. Read services take it as `accountIds`
+ * and leave out everything else, so totals, reports and exports only ever add up what that person can see.
+ */
+export type AccountScope = string[] | null | undefined;
+
+/** SQL condition limiting a column to the scope; no condition when the scope is every account. */
+export const inScope = (scope: AccountScope, column: Parameters<typeof inArray>[0]) =>
+  scope ? inArray(column, scope.length ? scope : [""]) : undefined;
+
 export async function listAccounts(
   db: Db,
-  { asOf = todayIso(), includeArchived = false }: { asOf?: string; includeArchived?: boolean } = {},
+  { asOf = todayIso(), includeArchived = false, accountIds }: { asOf?: string; includeArchived?: boolean; accountIds?: AccountScope } = {},
 ): Promise<AccountView[]> {
   const [rows, movements, { byCode, base }] = await Promise.all([
     db
       .select({ account: accounts, groupName: accountGroups.name, groupType: accountGroups.type, groupSort: accountGroups.sort })
       .from(accounts)
       .innerJoin(accountGroups, eq(accounts.groupId, accountGroups.id))
-      .where(includeArchived ? undefined : eq(accounts.archived, false))
+      .where(and(includeArchived ? undefined : eq(accounts.archived, false), inScope(accountIds, accounts.id)))
       .orderBy(asc(accountGroups.sort), asc(accounts.sort), asc(accounts.createdAt)),
     accountMovements(db, asOf),
     getCurrencies(db),
@@ -477,6 +487,8 @@ export interface TxFilter {
   types?: TxType[];
   q?: string;
   limit?: number;
+  /** Only transactions touching these accounts (either side of a transfer). */
+  accountIds?: AccountScope;
 }
 
 export async function listTransactions(db: Db, filter: TxFilter = {}): Promise<TxView[]> {
@@ -485,6 +497,7 @@ export async function listTransactions(db: Db, filter: TxFilter = {}): Promise<T
     filter.to ? lte(transactions.date, filter.to) : undefined,
     filter.accountId ? or(eq(transactions.accountId, filter.accountId), eq(transactions.toAccountId, filter.accountId)) : undefined,
     filter.types?.length ? inArray(transactions.type, filter.types) : undefined,
+    filter.accountIds ? or(inScope(filter.accountIds, transactions.accountId), inScope(filter.accountIds, transactions.toAccountId)) : undefined,
     filter.categoryId
       ? inArray(
           transactions.categoryId,
@@ -527,17 +540,17 @@ export async function listTransactions(db: Db, filter: TxFilter = {}): Promise<T
   }));
 }
 
-export async function getTransaction(db: Db, id: string): Promise<TxView | null> {
+export async function getTransaction(db: Db, id: string, accountIds?: AccountScope): Promise<TxView | null> {
   const [row] = await db.select().from(transactions).where(eq(transactions.id, id));
   if (!row) return null;
-  const views = await listTransactions(db, { from: row.date, to: row.date, accountId: row.accountId });
+  const views = await listTransactions(db, { from: row.date, to: row.date, accountId: row.accountId, accountIds });
   return views.find((v) => v.id === id) ?? null;
 }
 
 /** Transactions in a date range, converted to the base currency with their top-level category, for reports. */
-export async function statTransactions(db: Db, range: { from: string; to: string }): Promise<StatTx[]> {
+export async function statTransactions(db: Db, range: { from: string; to: string }, accountIds?: AccountScope): Promise<StatTx[]> {
   const [txs, cats] = await Promise.all([
-    listTransactions(db, { ...range, types: ["income", "expense"] }),
+    listTransactions(db, { ...range, types: ["income", "expense"], accountIds }),
     db.select({ id: categories.id, parentId: categories.parentId }).from(categories),
   ]);
   const parentOf = new Map(cats.map((c) => [c.id, c.parentId ?? c.id]));
@@ -556,18 +569,18 @@ function ledgerAccounts(rows: AccountRow[]): LedgerAccount[] {
   return rows.map((a) => ({ id: a.id, currency: a.currency, openingBalance: a.openingBalance, includeInTotals: a.includeInTotals }));
 }
 
-export async function getNetWorth(db: Db, asOf = todayIso()): Promise<NetWorth> {
-  const [rows, { byCode, base }] = await Promise.all([listAccounts(db, { asOf, includeArchived: true }), getCurrencies(db)]);
+export async function getNetWorth(db: Db, asOf = todayIso(), accountIds?: AccountScope): Promise<NetWorth> {
+  const [rows, { byCode, base }] = await Promise.all([listAccounts(db, { asOf, includeArchived: true, accountIds }), getCurrencies(db)]);
   return netWorth(ledgerAccounts(rows), new Map(rows.map((r) => [r.id, r.balance])), byCode, base);
 }
 
 /** Net worth at each month end, at current exchange rates. */
-export async function getNetWorthSeries(db: Db, monthEnds: string[]): Promise<{ date: string; worth: NetWorth }[]> {
-  return Promise.all(monthEnds.map(async (date) => ({ date, worth: await getNetWorth(db, date) })));
+export async function getNetWorthSeries(db: Db, monthEnds: string[], accountIds?: AccountScope): Promise<{ date: string; worth: NetWorth }[]> {
+  return Promise.all(monthEnds.map(async (date) => ({ date, worth: await getNetWorth(db, date, accountIds) })));
 }
 
-export async function getAccountDetail(db: Db, id: string) {
-  const [account] = (await listAccounts(db, { includeArchived: true })).filter((a) => a.id === id);
+export async function getAccountDetail(db: Db, id: string, accountIds?: AccountScope) {
+  const [account] = (await listAccounts(db, { includeArchived: true, accountIds })).filter((a) => a.id === id);
   if (!account) return null;
   const txs = await listTransactions(db, { accountId: id });
   const today = todayIso();
@@ -580,8 +593,8 @@ export async function getAccountDetail(db: Db, id: string) {
 }
 
 /** Accounts that hold debt (cards, loans, overdrafts or any negative balance) and money owed to you. */
-export async function getDebts(db: Db, today = todayIso()) {
-  const all = await listAccounts(db, { asOf: today });
+export async function getDebts(db: Db, today = todayIso(), accountIds?: AccountScope) {
+  const all = await listAccounts(db, { asOf: today, accountIds });
   const owed = all.filter((a) => LIABILITY_GROUP_TYPES.includes(a.groupType) || (a.balance < 0 && a.groupType !== "receivable"));
   const receivable = all.filter((a) => a.groupType === "receivable" && !owed.includes(a));
   const ids = [...owed, ...receivable].map((a) => a.id);

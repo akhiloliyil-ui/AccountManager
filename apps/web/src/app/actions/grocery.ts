@@ -2,6 +2,8 @@
 
 import {
   addItem,
+  assertAdmin,
+  assertCanWrite,
   confirmPurchase,
   createList,
   createProduct,
@@ -19,48 +21,51 @@ import {
 } from "@gpa/db";
 import { runAction } from "@/lib/server/action";
 
+/* Grocery lists, prices and offers are shared by the household: Write users and admins change them, Read users
+   only look. Paying for a basket also needs access to the account it is paid from. */
+
 export async function createListAction(type: ListType, name: string, fromId?: string | null) {
-  return runAction((db) => createList(db, { type, name, fromId }));
+  return runAction((db, access) => (assertCanWrite(access), createList(db, { type, name, fromId })));
 }
 
 export async function renameListAction(id: string, name: string) {
-  return runAction((db) => renameList(db, id, name));
+  return runAction((db, access) => (assertCanWrite(access), renameList(db, id, name)));
 }
 
 export async function deleteListAction(id: string) {
-  return runAction((db) => deleteList(db, id));
+  return runAction((db, access) => (assertCanWrite(access), deleteList(db, id)));
 }
 
 export async function addItemAction(listId: string, item: { productId?: string | null; text?: string | null; quantity?: number }) {
-  return runAction((db) => addItem(db, listId, item));
+  return runAction((db, access) => (assertCanWrite(access), addItem(db, listId, item)));
 }
 
 export async function setQuantityAction(itemId: string, quantity: number) {
-  return runAction((db) => setQuantity(db, itemId, quantity));
+  return runAction((db, access) => (assertCanWrite(access), setQuantity(db, itemId, quantity)));
 }
 
 export async function setCheckedAction(itemId: string, checked: boolean) {
-  return runAction((db) => setChecked(db, itemId, checked));
+  return runAction((db, access) => (assertCanWrite(access), setChecked(db, itemId, checked)));
 }
 
 export async function removeItemAction(itemId: string) {
-  return runAction((db) => removeItem(db, itemId));
+  return runAction((db, access) => (assertCanWrite(access), removeItem(db, itemId)));
 }
 
 export async function saveAsTemplateAction(listId: string, name: string) {
-  return runAction((db) => saveAsTemplate(db, listId, name));
+  return runAction((db, access) => (assertCanWrite(access), saveAsTemplate(db, listId, name)));
 }
 
 export async function updateGrocerySettingsAction(patch: Partial<GrocerySettings>) {
-  return runAction((db) => updateGrocerySettings(db, patch));
+  return runAction((db, access) => (assertAdmin(access), updateGrocerySettings(db, patch)));
 }
 
 export async function confirmPurchaseAction(input: ConfirmPurchaseInput) {
-  return runAction((db) => confirmPurchase(db, input));
+  return runAction((db, access) => (assertCanWrite(access, [input.accountId]), confirmPurchase(db, input)));
 }
 
 export async function setShelfPriceAction(input: { productId: string; storeId: string; priceFils: number }) {
-  return runAction((db) => setShelfPrice(db, input));
+  return runAction((db, access) => (assertCanWrite(access), setShelfPrice(db, input)));
 }
 
 export async function createProductAction(input: {
@@ -71,5 +76,5 @@ export async function createProductAction(input: {
   packUnit?: "piece" | "kg" | "g" | "L" | "ml" | "pack";
   soldBy?: "each" | "kg";
 }) {
-  return runAction((db) => createProduct(db, input));
+  return runAction((db, access) => (assertCanWrite(access), createProduct(db, input)));
 }

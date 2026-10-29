@@ -1,19 +1,26 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { createSignInThrottle, issueSession, SESSION_MAX_AGE_S, verifySession, type Db } from "@gpa/db";
+import { createSignInThrottle, issueSession, SESSION_MAX_AGE_S, verifySession, type Access, type Db, type UserRow } from "@gpa/db";
 import { SESSION_COOKIE } from "../session-cookie";
 
-const g = globalThis as { __gpaThrottle?: ReturnType<typeof createSignInThrottle> };
-/** One throttle per server process: GPA is a single-household app, so this guards the one passcode. */
-export const signInThrottle = (g.__gpaThrottle ??= createSignInThrottle());
+const g = globalThis as { __gpaThrottles?: Map<string, ReturnType<typeof createSignInThrottle>> };
+const throttles = (g.__gpaThrottles ??= new Map());
 
-export async function isSignedIn(db: Db): Promise<boolean> {
+/** One throttle per username, so guessing one person's password doesn't lock the others out. */
+export function signInThrottle(username: string) {
+  const key = username.trim().toLowerCase();
+  let t = throttles.get(key);
+  if (!t) throttles.set(key, (t = createSignInThrottle()));
+  return t;
+}
+
+export async function currentAccess(db: Db): Promise<Access | null> {
   return verifySession(db, (await cookies()).get(SESSION_COOKIE)?.value);
 }
 
-/** Every data read goes through here (via requestDb). Sends signed-out visitors to the sign-in page. */
-export async function requireSession(db: Db): Promise<void> {
-  if (!(await isSignedIn(db))) redirect("/login");
+/** Every data read goes through here (via requestSession). Sends signed-out visitors to the sign-in page. */
+export async function requireAccess(db: Db): Promise<Access> {
+  return (await currentAccess(db)) ?? redirect("/login");
 }
 
 /**
@@ -25,8 +32,8 @@ async function overHttps(): Promise<boolean> {
   return (h.get("x-forwarded-proto") ?? "").split(",")[0]!.trim() === "https" || (h.get("origin") ?? "").startsWith("https://");
 }
 
-export async function startSession(db: Db): Promise<void> {
-  (await cookies()).set(SESSION_COOKIE, await issueSession(db), {
+export async function startSession(db: Db, user: Pick<UserRow, "id" | "sessionVersion">): Promise<void> {
+  (await cookies()).set(SESSION_COOKIE, await issueSession(db, user), {
     httpOnly: true,
     sameSite: "lax",
     secure: await overHttps(),

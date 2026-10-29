@@ -1,6 +1,6 @@
 import { todayIso } from "@gpa/core";
 import { listAccounts, listCategories, listTransactions } from "@gpa/db";
-import { requestDb } from "@/lib/server/db";
+import { requestSession } from "@/lib/server/db";
 
 const csvCell = (v: unknown) => {
   const s = v === null || v === undefined ? "" : String(v);
@@ -9,8 +9,8 @@ const csvCell = (v: unknown) => {
 
 /** Every transaction as CSV (amounts in major units of each account's currency). */
 export async function GET() {
-  const db = await requestDb();
-  const [txs, accounts, categories] = await Promise.all([listTransactions(db, { limit: 1_000_000 }), listAccounts(db, { includeArchived: true }), listCategories(db, { includeArchived: true })]);
+  const { db, scope } = await requestSession();
+  const [txs, accounts, categories] = await Promise.all([listTransactions(db, { accountIds: scope, limit: 1_000_000 }), listAccounts(db, { includeArchived: true, accountIds: scope }), listCategories(db, { includeArchived: true })]);
   const account = new Map(accounts.map((a) => [a.id, a.name]));
   const category = new Map(categories.map((c) => [c.id, c]));
   const categoryPath = (id: string | null) => {

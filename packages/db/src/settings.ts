@@ -20,9 +20,7 @@ export interface Settings {
   fxCheckedAt: string | null;
   /** When the provider published the rates last fetched. */
   fxPublishedAt: string | null;
-  /** scrypt hash of the household passcode; null until it is created on first visit. Never sent to the browser. */
-  authHash: string | null;
-  /** Signs session cookies. Replacing it signs every device out. Never sent to the browser. */
+  /** Signs session cookies. Replacing it signs everyone out on every device. Never sent to the browser. */
   authSecret: string | null;
 }
 
@@ -36,7 +34,6 @@ export const DEFAULT_SETTINGS: Settings = {
   fxUpdatedAt: null,
   fxCheckedAt: null,
   fxPublishedAt: null,
-  authHash: null,
   authSecret: null,
 };
 

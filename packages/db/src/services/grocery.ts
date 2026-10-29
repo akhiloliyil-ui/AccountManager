@@ -26,7 +26,7 @@ import {
   transactions,
 } from "../schema";
 import { getSettings, setSettings, type Settings } from "../settings";
-import { getCurrencies, ValidationError } from "./money";
+import { getCurrencies, inScope, ValidationError, type AccountScope } from "./money";
 
 /* ------------------------------------------------------------------ catalogue */
 
@@ -383,7 +383,7 @@ export async function confirmPurchase(db: Db, input: ConfirmPurchaseInput) {
 }
 
 /** Grocery spend this month: expenses booked to the grocery category (and its subcategories), in AED fils. */
-export async function groceryMonthSpend(db: Db, today = todayIso()) {
+export async function groceryMonthSpend(db: Db, today = todayIso(), accountIds?: AccountScope) {
   const settings = await getSettings(db);
   const [{ byCode }, rows] = await Promise.all([
     getCurrencies(db),
@@ -394,6 +394,7 @@ export async function groceryMonthSpend(db: Db, today = todayIso()) {
       .where(
         and(
           eq(transactions.type, "expense"),
+          inScope(accountIds, transactions.accountId),
           gte(transactions.date, monthStartOf(today)),
           lte(transactions.date, monthEndOf(today)),
           inArray(

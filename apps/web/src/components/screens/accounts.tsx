@@ -40,7 +40,7 @@ export function AccountsScreen({
   worth: NetWorth;
   series: { date: string; worth: NetWorth }[];
 }) {
-  const { base } = useApp();
+  const { base, isAdmin } = useApp();
   const [editing, setEditing] = useState<AccountView | "new" | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const shown = accounts.filter((a) => showArchived || !a.archived);
@@ -50,14 +50,16 @@ export function AccountsScreen({
       <PageHeader
         title="Accounts"
         action={
-          <div className="flex gap-2">
-            <ButtonLink href="/settings/account-groups" variant="secondary" aria-label="Account groups" className="px-3">
-              <Settings2 size={16} />
-            </ButtonLink>
-            <Button onClick={() => setEditing("new")}>
-              <Plus size={18} /> <span className="hidden sm:inline">Add account</span>
-            </Button>
-          </div>
+          isAdmin && (
+            <div className="flex gap-2">
+              <ButtonLink href="/settings/account-groups" variant="secondary" aria-label="Account groups" className="px-3">
+                <Settings2 size={16} />
+              </ButtonLink>
+              <Button onClick={() => setEditing("new")}>
+                <Plus size={18} /> <span className="hidden sm:inline">Add account</span>
+              </Button>
+            </div>
+          )
         }
       />
 
@@ -304,7 +306,7 @@ export function AccountDetailScreen({
   accounts: AccountView[];
 }) {
   const router = useRouter();
-  const { today, currency } = useApp();
+  const { today, currency, isAdmin, canWrite } = useApp();
   const { pending, run } = useAction();
   const [editing, setEditing] = useState(false);
   const [valuing, setValuing] = useState(false);
@@ -326,7 +328,7 @@ export function AccountDetailScreen({
           </p>
           <h1 className="truncate text-2xl font-semibold tracking-tight md:text-[28px]">{account.name}</h1>
         </div>
-        <div className="flex gap-2">
+        <div className={clsx("flex gap-2", !isAdmin && "hidden")}>
           <Button variant="secondary" onClick={() => setEditing(true)}>
             <Pencil size={16} /> Edit
           </Button>
@@ -382,7 +384,7 @@ export function AccountDetailScreen({
         <div>
           <p className="text-xs text-muted">{investment ? "Gain / loss (revaluations)" : "Adjustments"}</p>
           <Amount minor={adjustments} currency={account.currency} tone="auto" signed className="font-semibold" />
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className={clsx("mt-2 flex flex-wrap gap-2", !canWrite && "hidden")}>
             <Button variant="secondary" className="h-9" onClick={() => setValuing(true)}>
               {investment ? "Update value" : "Reconcile"}
             </Button>
@@ -390,7 +392,7 @@ export function AccountDetailScreen({
         </div>
       </Card>
 
-      <div className="flex flex-wrap gap-2">
+      <div className={clsx("flex flex-wrap gap-2", !canWrite && "hidden")}>
         <ButtonLink variant="secondary" href={`/transactions/new?type=expense&account=${account.id}`}>
           Expense
         </ButtonLink>

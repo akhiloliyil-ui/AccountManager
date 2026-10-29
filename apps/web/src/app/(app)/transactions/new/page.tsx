@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { todayIso } from "@gpa/core";
 import { listAccounts } from "@gpa/db";
 import { TransactionForm } from "@/components/screens/transaction-form";
-import { requestDb } from "@/lib/server/db";
+import { requestSession } from "@/lib/server/db";
 import type { TxType } from "@/lib/types";
 
 export const metadata: Metadata = { title: "New transaction" };
@@ -11,9 +12,10 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) 
 const TYPES: TxType[] = ["income", "expense", "transfer", "adjustment"];
 
 export default async function Page({ searchParams }: PageProps<"/transactions/new">) {
-  const db = await requestDb();
+  const { db, scope, access } = await requestSession();
+  if (access.role === "read") redirect("/transactions");
   const sp = await searchParams;
-  const accounts = await listAccounts(db);
+  const accounts = await listAccounts(db, { accountIds: scope });
   const type = TYPES.find((t) => t === one(sp.type));
   const date = one(sp.date);
   return (

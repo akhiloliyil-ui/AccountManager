@@ -2,7 +2,7 @@ import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { importHashes, suggestCategory, type StatementRow, type Suggestion } from "@gpa/core";
 import type { Db } from "../client";
 import { accounts, categories, categoryRules, importBatches, transactions } from "../schema";
-import { ValidationError } from "./money";
+import { inScope, ValidationError, type AccountScope } from "./money";
 
 export type RuleRow = typeof categoryRules.$inferSelect;
 
@@ -138,11 +138,12 @@ export async function commitStatement(
   });
 }
 
-export async function listImportBatches(db: Db) {
+export async function listImportBatches(db: Db, accountIds?: AccountScope) {
   return db
     .select({ batch: importBatches, accountName: accounts.name })
     .from(importBatches)
     .innerJoin(accounts, eq(importBatches.accountId, accounts.id))
+    .where(inScope(accountIds, importBatches.accountId))
     .orderBy(desc(importBatches.createdAt))
     .limit(20);
 }

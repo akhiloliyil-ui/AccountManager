@@ -2,11 +2,13 @@
 
 import { useState, useTransition } from "react";
 import { LockKeyhole, ShoppingBasket } from "lucide-react";
-import { setUpPasscode, signIn } from "@/app/actions/auth";
+import { setUpOwner, signIn } from "@/app/actions/auth";
 import { Button, Card, Field, Input } from "../ui";
 
 export function LoginScreen({ mode, next }: { mode: "sign-in" | "set-up"; next: string }) {
-  const [passcode, setPasscode] = useState("");
+  const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -17,10 +19,10 @@ export function LoginScreen({ mode, next }: { mode: "sign-in" | "set-up"; next: 
     setError(null);
     startTransition(async () => {
       // On success the action redirects; it only returns when something is wrong.
-      const result = setUp ? await setUpPasscode(passcode, confirm) : await signIn(passcode, next);
+      const result = setUp ? await setUpOwner({ username, displayName, password, confirm }) : await signIn(username, password, next);
       if (result && !result.ok) {
         setError(result.error);
-        if (!setUp) setPasscode("");
+        if (!setUp) setPassword("");
       }
     });
   };
@@ -33,30 +35,37 @@ export function LoginScreen({ mode, next }: { mode: "sign-in" | "set-up"; next: 
             <ShoppingBasket size={28} strokeWidth={2.25} />
           </span>
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">{setUp ? "Set a passcode for GPA" : "Welcome back"}</h1>
+            <h1 className="text-xl font-semibold tracking-tight">{setUp ? "Set up GPA" : "Welcome back"}</h1>
             <p className="mt-1 text-sm text-muted">
               {setUp
-                ? "Anyone who can open this address needs it to see or change your accounts. Share it only with your household."
-                : "Enter your household passcode."}
+                ? "Create the owner account. You can add up to 4 more people afterwards, in Settings → People & access."
+                : "Sign in with your username and password."}
             </p>
           </div>
         </div>
 
         <Card className="p-5">
           <form onSubmit={submit} className="space-y-4">
-            <Field label={setUp ? "New passcode" : "Passcode"} hint={setUp ? "At least 6 characters. Longer is safer if GPA is reachable from the internet." : undefined}>
+            <Field label="Username" hint={setUp ? "Letters and numbers, e.g. akhil. Used to sign in." : undefined}>
+              <Input name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} value={username} onChange={(e) => setUsername(e.target.value)} autoFocus required />
+            </Field>
+            {setUp && (
+              <Field label="Your name">
+                <Input name="name" autoComplete="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Akhil" />
+              </Field>
+            )}
+            <Field label="Password" hint={setUp ? "At least 8 characters. Longer is safer if GPA is reachable from the internet." : undefined}>
               <Input
                 type="password"
-                name="passcode"
+                name="password"
                 autoComplete={setUp ? "new-password" : "current-password"}
-                value={passcode}
-                onChange={(e) => setPasscode(e.target.value)}
-                autoFocus
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </Field>
             {setUp && (
-              <Field label="Repeat passcode">
+              <Field label="Repeat password">
                 <Input type="password" name="confirm" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
               </Field>
             )}
@@ -65,12 +74,12 @@ export function LoginScreen({ mode, next }: { mode: "sign-in" | "set-up"; next: 
                 {error}
               </p>
             )}
-            <Button type="submit" className="w-full" disabled={pending || !passcode}>
-              <LockKeyhole size={16} /> {setUp ? "Set passcode and open GPA" : "Sign in"}
+            <Button type="submit" className="w-full" disabled={pending || !username || !password}>
+              <LockKeyhole size={16} /> {setUp ? "Create owner and open GPA" : "Sign in"}
             </Button>
           </form>
         </Card>
-        {!setUp && <p className="mt-4 text-center text-xs text-muted">Forgot it? See “Reset the passcode” in the README.</p>}
+        {!setUp && <p className="mt-4 text-center text-xs text-muted">Forgot your password? Ask an admin to set a new one in People & access.</p>}
       </div>
     </main>
   );

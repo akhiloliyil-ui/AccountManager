@@ -2,12 +2,12 @@ import type { ReactNode } from "react";
 import { after } from "next/server";
 import { todayIso } from "@gpa/core";
 import { getCatalog, getCurrencies, getSettings, listCategories, refreshRatesIfStale } from "@gpa/db";
-import { requestDb } from "@/lib/server/db";
+import { requestSession } from "@/lib/server/db";
 import { AppDataProvider } from "./providers";
 
 /** Loads what every screen shares (currencies, categories, grocery catalogue, settings) once per request. */
 export async function AppData({ children }: { children: ReactNode }) {
-  const db = await requestDb();
+  const { db, access } = await requestSession();
   const today = todayIso();
   const [{ rows: currencies }, catalog, categories, settings] = await Promise.all([
     getCurrencies(db),
@@ -16,6 +16,7 @@ export async function AppData({ children }: { children: ReactNode }) {
     getSettings(db),
   ]);
   const { groceryBudgetFils, preferredStoreIds, groceryCategoryId, defaultAccountId, fxAutoUpdate } = settings;
+  const canSeeDefault = !defaultAccountId || access.accountIds === null || access.accountIds.includes(defaultAccountId);
   // Automatic exchange rates update after the response, so a slow or offline rate service never delays a page.
   if (fxAutoUpdate) after(() => refreshRatesIfStale(db));
   return (
@@ -25,7 +26,8 @@ export async function AppData({ children }: { children: ReactNode }) {
         currencies,
         catalog,
         categories,
-        settings: { groceryBudgetFils, preferredStoreIds, groceryCategoryId, defaultAccountId },
+        settings: { groceryBudgetFils, preferredStoreIds, groceryCategoryId, defaultAccountId: canSeeDefault ? defaultAccountId : null },
+        user: { displayName: access.displayName, username: access.username, role: access.role, isOwner: access.isOwner },
       }}
     >
       {children}

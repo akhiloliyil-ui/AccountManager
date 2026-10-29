@@ -8,7 +8,7 @@ import { useApp } from "../providers";
 import { Amount, BackLink, ButtonLink, Card, EmptyState, PageHeader, SectionTitle } from "../ui";
 
 export function DebtsScreen({ owed, receivable, upcoming }: { owed: AccountView[]; receivable: AccountView[]; upcoming: TxView[] }) {
-  const { base, currency } = useApp();
+  const { base, currency, canWrite, isAdmin } = useApp();
   const totalOwed = owed.reduce((s, a) => s + Math.min(0, a.balanceBase), 0);
   const totalLent = receivable.reduce((s, a) => s + Math.max(0, a.balanceBase), 0);
   const byAccount = new Map<string, TxView[]>();
@@ -27,7 +27,7 @@ export function DebtsScreen({ owed, receivable, upcoming }: { owed: AccountView[
           icon={<HandCoins size={22} />}
           title="No debts tracked"
           body="Add a loan, credit card or overdraft account, or money you lent under Friends. Record repayments as transfers into them."
-          action={<ButtonLink href="/accounts">Add an account</ButtonLink>}
+          action={isAdmin && <ButtonLink href="/accounts">Add an account</ButtonLink>}
         />
       </div>
     );
@@ -100,7 +100,7 @@ export function DebtsScreen({ owed, receivable, upcoming }: { owed: AccountView[
                           {remaining > 1 && ` · ${remaining} payments left`}
                         </p>
                       )}
-                      {outstanding > 0 && (
+                      {canWrite && outstanding > 0 && (
                         <ButtonLink
                           variant="secondary"
                           className="mt-4 h-9 self-start"

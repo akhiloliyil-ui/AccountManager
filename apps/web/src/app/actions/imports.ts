@@ -3,6 +3,8 @@
 import type { Promo, StatementRow } from "@gpa/core";
 import {
   addPdfLine,
+  assertCanWrite,
+  assertCanWriteImportBatch,
   commitStatement,
   createPdfImport,
   discardPdfImport,
@@ -29,7 +31,8 @@ function fileFrom(form: FormData): File {
 
 /** Statement step 1: read a CSV/Excel file into a grid for column mapping in the browser. */
 export async function readStatement(form: FormData) {
-  return runAction(async () => {
+  return runAction(async (_db, access) => {
+    assertCanWrite(access);
     const file = fileFrom(form);
     if (!/\.(csv|txt|xlsx|xlsm|xls|ods)$/i.test(file.name)) throw new ValidationError("Upload a CSV or Excel statement");
     const grid = await readStatementFile(new Uint8Array(await file.arrayBuffer()), file.name);
@@ -39,20 +42,25 @@ export async function readStatement(form: FormData) {
 }
 
 export async function previewStatementAction(accountId: string, rows: StatementRow[]) {
-  return runAction((db) => previewStatement(db, accountId, rows));
+  return runAction((db, access) => (assertCanWrite(access, [accountId]), previewStatement(db, accountId, rows)));
 }
 
 export async function commitStatementAction(input: { accountId: string; filename: string; rowCount: number; lines: CommitLine[] }) {
-  return runAction((db) => commitStatement(db, input));
+  // Lines booked as transfers touch a second account, which must be the person's too.
+  return runAction((db, access) => (assertCanWrite(access, [input.accountId, ...input.lines.map((l) => l.transferAccountId)]), commitStatement(db, input)));
 }
 
 export async function undoImportAction(batchId: string) {
-  return runAction((db) => undoImportBatch(db, batchId));
+  return runAction(async (db, access) => {
+    await assertCanWriteImportBatch(db, access, batchId);
+    return undoImportBatch(db, batchId);
+  });
 }
 
 /** Promotion PDF: store the file, read its text layer and propose offers for review. */
 export async function uploadPromotionPdf(form: FormData) {
-  return runAction(async (db) => {
+  return runAction(async (db, access) => {
+    assertCanWrite(access);
     const file = fileFrom(form);
     const bytes = new Uint8Array(await file.arrayBuffer());
     if (new TextDecoder().decode(bytes.slice(0, 5)) !== "%PDF-") throw new ValidationError("That file is not a PDF");
@@ -69,21 +77,21 @@ export async function uploadPromotionPdf(form: FormData) {
 }
 
 export async function updatePdfImportAction(id: string, patch: { storeId?: string | null; validTo?: string | null }) {
-  return runAction((db) => updatePdfImport(db, id, patch));
+  return runAction((db, access) => (assertCanWrite(access), updatePdfImport(db, id, patch)));
 }
 
 export async function updatePdfLineAction(lineId: string, patch: LinePatch) {
-  return runAction((db) => updatePdfLine(db, lineId, patch));
+  return runAction((db, access) => (assertCanWrite(access), updatePdfLine(db, lineId, patch)));
 }
 
 export async function addPdfLineAction(importId: string, input: { productId: string; priceFils: number; regularFils?: number | null; promo?: Promo | null }) {
-  return runAction((db) => addPdfLine(db, importId, input));
+  return runAction((db, access) => (assertCanWrite(access), addPdfLine(db, importId, input)));
 }
 
 export async function publishPdfImportAction(id: string) {
-  return runAction((db) => publishPdfImport(db, id));
+  return runAction((db, access) => (assertCanWrite(access), publishPdfImport(db, id)));
 }
 
 export async function discardPdfImportAction(id: string) {
-  return runAction((db) => discardPdfImport(db, id));
+  return runAction((db, access) => (assertCanWrite(access), discardPdfImport(db, id)));
 }

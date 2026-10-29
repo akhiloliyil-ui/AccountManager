@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import { addMonths, monthEndOf, todayIso } from "@gpa/core";
 import { listAccounts, listTransactions } from "@gpa/db";
 import { TransactionsScreen, type TxViewMode } from "@/components/screens/transactions";
-import { requestDb } from "@/lib/server/db";
+import { requestSession } from "@/lib/server/db";
 
 export const metadata: Metadata = { title: "Transactions" };
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined;
 
 export default async function Page({ searchParams }: PageProps<"/transactions">) {
-  const db = await requestDb();
+  const { db, scope } = await requestSession();
   const sp = await searchParams;
   const view: TxViewMode = one(sp.view) === "calendar" ? "calendar" : one(sp.view) === "monthly" ? "monthly" : "daily";
   const m = one(sp.m);
@@ -19,8 +19,8 @@ export default async function Page({ searchParams }: PageProps<"/transactions">)
   const filters = { account: one(sp.account), category: one(sp.category), q: one(sp.q) };
 
   const [txs, accounts] = await Promise.all([
-    listTransactions(db, { from: anchor, to, accountId: filters.account, categoryId: filters.category, q: filters.q }),
-    listAccounts(db, { includeArchived: true }),
+    listTransactions(db, { accountIds: scope, from: anchor, to, accountId: filters.account, categoryId: filters.category, q: filters.q }),
+    listAccounts(db, { includeArchived: true, accountIds: scope }),
   ]);
   return <TransactionsScreen data={{ view, anchor, txs, accounts, filters }} />;
 }

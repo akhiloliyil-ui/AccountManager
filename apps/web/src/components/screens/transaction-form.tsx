@@ -23,7 +23,7 @@ type Schedule = NonNullable<TxInput["schedule"]>;
 
 export function TransactionForm({ tx, accounts, defaults }: TransactionFormProps) {
   const router = useRouter();
-  const { currency, categories, settings } = useApp();
+  const { currency, categories, settings, canWrite } = useApp();
   const { pending, run } = useAction();
   const label = useCategoryLabel();
   const editing = !!tx;
@@ -245,7 +245,8 @@ export function TransactionForm({ tx, accounts, defaults }: TransactionFormProps
       )}
       {editing && tx.source === "basket" && <p className="mt-3 text-sm text-muted">Booked from a grocery basket. Deleting it puts the items back on the list as not bought.</p>}
 
-      <div className="mt-5 flex gap-2">
+      {!canWrite && <p className="mt-5 rounded-xl bg-surface-2 px-3 py-2 text-sm text-muted">You have read-only access, so this can’t be changed.</p>}
+      <div className={clsx("mt-5 flex gap-2", !canWrite && "hidden")}>
         <Button className="flex-1" variant={tone === "primary" ? "primary" : tone} disabled={pending} onClick={() => submit(false)}>
           Save
         </Button>

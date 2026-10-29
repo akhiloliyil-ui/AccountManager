@@ -28,7 +28,7 @@ export function TransactionsScreen({ data }: { data: TransactionsData }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const { today, categories } = useApp();
+  const { today, categories, canWrite } = useApp();
   const [day, setDay] = useState<string | null>(null);
   const accountById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
 
@@ -54,7 +54,7 @@ export function TransactionsScreen({ data }: { data: TransactionsData }) {
       <PageHeader
         title="Transactions"
         action={
-          <ButtonLink href={`/transactions/new${day ? `?date=${day}` : ""}`} variant="expense" className="hidden shrink-0 md:inline-flex">
+          <ButtonLink href={`/transactions/new${day ? `?date=${day}` : ""}`} variant="expense" className={clsx("hidden shrink-0", canWrite && "md:inline-flex")}>
             <Plus size={18} /> Add
           </ButtonLink>
         }
@@ -98,7 +98,7 @@ export function TransactionsScreen({ data }: { data: TransactionsData }) {
               icon={<NotebookText size={22} />}
               title={filtered ? "Nothing matches these filters" : "No transactions this month"}
               body={filtered ? "Clear a filter or look at another month." : "Add one with the + button, or import a bank statement."}
-              action={<ButtonLink href="/transactions/new">Add transaction</ButtonLink>}
+              action={canWrite && <ButtonLink href="/transactions/new">Add transaction</ButtonLink>}
             />
           )}
         </>
