@@ -19,5 +19,9 @@ export const migrations: { tag: string; sql: string }[] = [
   {
     "tag": "0004_smooth_masque",
     "sql": "ALTER TABLE \"transactions\" ADD COLUMN \"paid_at\" timestamp with time zone;--> statement-breakpoint\n-- Scheduled payments already in the past were settled before bills existed; only future ones need confirming.\nUPDATE \"transactions\" SET \"paid_at\" = now() WHERE \"schedule_id\" IS NOT NULL AND \"date\" < current_date;\n"
+  },
+  {
+    "tag": "0005_motionless_norrin_radd",
+    "sql": "CREATE TABLE \"import_formats\" (\n\t\"id\" text PRIMARY KEY NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"signature\" text NOT NULL,\n\t\"mapping\" jsonb NOT NULL,\n\t\"account_id\" text,\n\t\"use_count\" integer DEFAULT 1 NOT NULL,\n\t\"last_used_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL\n);\n--> statement-breakpoint\nALTER TABLE \"import_formats\" ADD CONSTRAINT \"import_formats_account_id_accounts_id_fk\" FOREIGN KEY (\"account_id\") REFERENCES \"public\".\"accounts\"(\"id\") ON DELETE set null ON UPDATE no action;--> statement-breakpoint\nCREATE UNIQUE INDEX \"import_formats_signature_key\" ON \"import_formats\" USING btree (\"signature\");"
   }
 ];

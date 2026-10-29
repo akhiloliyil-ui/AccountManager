@@ -1,7 +1,7 @@
-import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
-import { importHashes, suggestCategory, type StatementRow, type Suggestion } from "@gpa/core";
+import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { importHashes, suggestCategory, type ColumnMapping, type StatementRow, type Suggestion } from "@gpa/core";
 import type { Db } from "../client";
-import { accounts, categories, categoryRules, importBatches, transactions } from "../schema";
+import { accounts, categories, categoryRules, importBatches, importFormats, transactions } from "../schema";
 import { inScope, ValidationError, type AccountScope } from "./money";
 
 export type RuleRow = typeof categoryRules.$inferSelect;
@@ -156,4 +156,51 @@ export async function undoImportBatch(db: Db, batchId: string): Promise<number> 
     await tx.delete(importBatches).where(eq(importBatches.id, batchId));
     return removed.length;
   });
+}
+
+/* ------------------------------------------------------------------ saved formats */
+
+export type ImportFormatRow = typeof importFormats.$inferSelect;
+
+export async function listImportFormats(db: Db): Promise<ImportFormatRow[]> {
+  return db.select().from(importFormats).orderBy(desc(importFormats.lastUsedAt));
+}
+
+const validMapping = (m: ColumnMapping) =>
+  [m.headerRow, m.date, m.description].every((n) => Number.isInteger(n) && n >= 0) &&
+  [m.amount, m.debit, m.credit, m.balance].every((n) => n === undefined || n === null || (Number.isInteger(n) && n >= 0)) &&
+  (m.amount != null || m.debit != null || m.credit != null) &&
+  ["DMY", "MDY", "YMD"].includes(m.dateFormat);
+
+/** Remembers (or refreshes) the mapping for a header layout after a successful import. */
+export async function saveImportFormat(db: Db, input: { signature: string; mapping: ColumnMapping; accountId: string; name?: string }): Promise<void> {
+  if (!input.signature || input.signature.length > 2000 || !validMapping(input.mapping)) return;
+  const [account] = await db.select({ name: accounts.name }).from(accounts).where(eq(accounts.id, input.accountId));
+  const mapping: ColumnMapping = {
+    headerRow: input.mapping.headerRow,
+    date: input.mapping.date,
+    description: input.mapping.description,
+    amount: input.mapping.amount ?? undefined,
+    debit: input.mapping.debit ?? undefined,
+    credit: input.mapping.credit ?? undefined,
+    balance: input.mapping.balance ?? undefined,
+    dateFormat: input.mapping.dateFormat,
+    invert: !!input.mapping.invert,
+  };
+  await db
+    .insert(importFormats)
+    .values({ name: input.name?.trim() || `${account?.name ?? "Bank"} statement`, signature: input.signature, mapping, accountId: input.accountId })
+    .onConflictDoUpdate({
+      target: importFormats.signature,
+      set: { mapping, accountId: input.accountId, useCount: sql`${importFormats.useCount} + 1`, lastUsedAt: new Date() },
+    });
+}
+
+export async function renameImportFormat(db: Db, id: string, name: string): Promise<void> {
+  if (!name.trim()) throw new ValidationError("Name the format");
+  await db.update(importFormats).set({ name: name.trim().slice(0, 80) }).where(eq(importFormats.id, id));
+}
+
+export async function deleteImportFormat(db: Db, id: string): Promise<void> {
+  await db.delete(importFormats).where(eq(importFormats.id, id));
 }

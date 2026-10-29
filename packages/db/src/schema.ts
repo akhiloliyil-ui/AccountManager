@@ -17,7 +17,7 @@ import {
   uniqueIndex,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import type { Promo } from "@gpa/core";
+import type { ColumnMapping, Promo } from "@gpa/core";
 
 const id = () =>
   text("id")
@@ -184,6 +184,23 @@ export const importBatches = pgTable("import_batches", {
   skippedCount: integer("skipped_count").notNull(),
   createdAt: createdAt(),
 });
+
+/** Statement layouts GPA has learned: a header fingerprint and the column mapping that worked for it. */
+export const importFormats = pgTable(
+  "import_formats",
+  {
+    id: id(),
+    name: text("name").notNull(),
+    signature: text("signature").notNull(),
+    mapping: jsonb("mapping").$type<ColumnMapping>().notNull(),
+    /** Account it was last imported into, offered next time. */
+    accountId: text("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    useCount: integer("use_count").notNull().default(1),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("import_formats_signature_key").on(t.signature)],
+);
 
 export const TX_SOURCES = ["manual", "import", "basket", "schedule"] as const;
 

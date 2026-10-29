@@ -130,3 +130,20 @@ describe("suggestCategory", () => {
     expect(suggestCategory("TALABAT DUBAI 9876", "income", [], history)).toBeNull();
   });
 });
+
+describe("saved statement formats", () => {
+  it("recognises a layout by its header, even with different preamble rows", async () => {
+    const { headerSignature, matchSavedFormat, guessMapping } = await import("./statement");
+    const october = parseCsv("Account,1234\nPeriod,Oct\nTxn Date,Narration,Withdrawal,Deposit,Balance\n01/10/2026,SALARY,,100,100\n");
+    const november = parseCsv("Account,1234\nTxn Date,Narration,Withdrawal,Deposit,Balance\n01/11/2026,RENT,50,,50\n");
+    const mapping = { ...guessMapping(october), dateFormat: "MDY" as const, invert: true };
+    const saved = { id: "f1", name: "Bank", signature: headerSignature(october[mapping.headerRow]!), mapping, accountId: "a1" };
+    expect(saved.signature).toBe("txn date|narration|withdrawal|deposit|balance");
+
+    const match = matchSavedFormat(november, [saved]);
+    expect(match?.format.id).toBe("f1");
+    expect(match?.mapping).toEqual({ ...mapping, headerRow: 1 });
+    expect(headerSignature(["  Txn  Date ", "NARRATION", "", ""])).toBe("txn date|narration");
+    expect(matchSavedFormat(parseCsv("Date,Details,Amount\n01/11/2026,X,5\n"), [saved])).toBeNull();
+  });
+});

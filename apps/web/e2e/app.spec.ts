@@ -107,23 +107,35 @@ const statement = `Txn Date,Narration,Withdrawal,Deposit,Balance
 `;
 
 test("imports a CSV statement once, flags the re-import as duplicates", async ({ page }) => {
-  for (const attempt of [1, 2]) {
+  const upload = async (name: string, body: string) => {
     await page.goto("/import");
-    await page.getByLabel("Account").selectOption({ label: "Salary Account (AED)" });
-    await page.locator('input[type="file"]').setInputFiles({ name: "statement.csv", mimeType: "text/csv", buffer: Buffer.from(statement) });
-    await expect(page.getByText("3 transactions read")).toBeVisible();
-    await page.getByRole("button", { name: "Check for duplicates and categories" }).click();
+    await page.getByLabel("Account", { exact: true }).selectOption({ label: "Salary Account (AED)" });
+    await page.locator('input[type="file"]').setInputFiles({ name, mimeType: "text/csv", buffer: Buffer.from(body) });
+  };
 
-    if (attempt === 1) {
-      await expect(page.getByText("3 to import")).toBeVisible();
-      await expect(page.getByLabel("Category").nth(1)).toHaveValue("e-shopping--grocery");
-      await page.getByRole("button", { name: "Import 3 transactions" }).click();
-      await expect(page.getByText("3 transactions imported")).toBeVisible();
-    } else {
-      await expect(page.getByText("3 already imported")).toBeVisible();
-      await expect(page.getByRole("button", { name: "Import 0 transactions" })).toBeDisabled();
-    }
-  }
+  // First time: match columns, then import.
+  await upload("statement.csv", statement);
+  await expect(page.getByText("3 transactions read")).toBeVisible();
+  await page.getByRole("button", { name: "Check for duplicates and categories" }).click();
+  await expect(page.getByText("3 to import")).toBeVisible();
+  await expect(page.getByLabel("Category").nth(1)).toHaveValue("e-shopping--grocery");
+  await page.getByRole("button", { name: "Import 3 transactions" }).click();
+  await expect(page.getByText("3 transactions imported")).toBeVisible();
+
+  // The same file again: the layout is recognised, columns are skipped, and every line is a duplicate.
+  await upload("statement.csv", statement);
+  await expect(page.getByText(/Recognised Salary Account statement/)).toBeVisible();
+  await expect(page.getByText("3 already imported")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Import 0 transactions" })).toBeDisabled();
+
+  // Next month's file, with an extra line above the header, goes straight to review too.
+  await upload("november.csv", `Statement period,November 2026\n${statement.split("\n")[0]}\n03/11/2026,ETISALAT BILL,299.00,,"13,746.56"\n`);
+  await expect(page.getByText(/Recognised Salary Account statement/)).toBeVisible();
+  await expect(page.getByText("1 to import")).toBeVisible();
+
+  await page.goto("/import");
+  await expect(page.getByText("Saved formats")).toBeVisible();
+  await expect(page.getByText("Used 1 time")).toBeVisible();
 });
 
 test("promotion PDF: upload, review and publish offers into price comparison", async ({ page }) => {

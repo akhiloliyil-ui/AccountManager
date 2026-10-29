@@ -169,6 +169,33 @@ export function detectHeaderRow(rows: Cell[][]): number {
   return 0;
 }
 
+/**
+ * A statement layout's fingerprint: its header cells, trimmed and lowercased. Two files from the same bank
+ * export share it even when the rows (and the account details above the header) differ.
+ */
+export function headerSignature(header: Cell[]): string {
+  return header.map((c) => c.trim().toLowerCase().replace(/\s+/g, " ")).join("|").replace(/\|+$/, "");
+}
+
+export interface SavedFormat {
+  id: string;
+  name: string;
+  signature: string;
+  /** The mapping as saved; headerRow is re-found in each new file. */
+  mapping: ColumnMapping;
+  accountId: string | null;
+}
+
+/** The saved format whose header appears in the first 25 rows, with headerRow set to where it is in this file. */
+export function matchSavedFormat<F extends SavedFormat>(rows: Cell[][], formats: F[]): { format: F; mapping: ColumnMapping } | null {
+  const bySignature = new Map(formats.map((f) => [f.signature, f]));
+  for (let i = 0; i < Math.min(rows.length, 25); i++) {
+    const format = bySignature.get(headerSignature(rows[i]!));
+    if (format) return { format, mapping: { ...format.mapping, headerRow: i } };
+  }
+  return null;
+}
+
 export function guessMapping(rows: Cell[][]): ColumnMapping {
   const headerRow = detectHeaderRow(rows);
   const header = rows[headerRow] ?? [];

@@ -24,6 +24,7 @@ const TABLES: Table[] = [
   s.budgets,
   s.categoryRules,
   s.importBatches,
+  s.importFormats,
   s.transactions,
   s.stores,
   s.groceryCategories,

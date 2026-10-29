@@ -3,15 +3,15 @@
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { clsx } from "clsx";
-import { Check, FileSpreadsheet, RotateCcw, Upload } from "lucide-react";
-import { guessMapping, normalizeStatement, type Cell, type ColumnMapping } from "@gpa/core";
-import { commitStatementAction, previewStatementAction, readStatement, undoImportAction } from "@/app/actions/imports";
+import { Check, FileSpreadsheet, Pencil, RotateCcw, Sparkles, Trash2, Upload } from "lucide-react";
+import { guessMapping, headerSignature, normalizeStatement, type Cell, type ColumnMapping } from "@gpa/core";
+import { commitStatementAction, deleteImportFormatAction, previewStatementAction, readStatement, renameImportFormatAction, undoImportAction } from "@/app/actions/imports";
 import type { AccountView, PreviewLine } from "@/lib/types";
 import { useAction } from "@/lib/use-action";
 import { AccountSelect } from "./transaction-form";
 import { categoryOptions } from "../ledger";
 import { useApp } from "../providers";
-import { Amount, Badge, Button, Card, Field, PageHeader, Select, Switch } from "../ui";
+import { Amount, Badge, Button, Card, Field, IconButton, PageHeader, Select, Switch } from "../ui";
 
 export interface ImportBatchSummary {
   id: string;
@@ -22,6 +22,14 @@ export interface ImportBatchSummary {
   createdAt: Date;
 }
 
+export interface ImportFormatSummary {
+  id: string;
+  name: string;
+  useCount: number;
+  lastUsedAt: Date;
+  accountId: string | null;
+}
+
 type Step = "file" | "map" | "review" | "done";
 
 interface Choice {
@@ -30,9 +38,20 @@ interface Choice {
   target: string;
 }
 
-export function StatementImportScreen({ accounts, batches, initialAccountId }: { accounts: AccountView[]; batches: ImportBatchSummary[]; initialAccountId?: string }) {
+export function StatementImportScreen({
+  accounts,
+  batches,
+  formats,
+  initialAccountId,
+}: {
+  accounts: AccountView[];
+  batches: ImportBatchSummary[];
+  formats: ImportFormatSummary[];
+  initialAccountId?: string;
+}) {
   const { pending, run } = useAction();
   const { currency } = useApp();
+  const [recognised, setRecognised] = useState<{ name: string; accountId: string | null } | null>(null);
   const [step, setStep] = useState<Step>("file");
   const [accountId, setAccountId] = useState(initialAccountId ?? accounts.find((a) => a.groupType === "bank")?.id ?? accounts[0]?.id ?? "");
   const [file, setFile] = useState<{ filename: string; grid: Cell[][] } | null>(null);
@@ -52,16 +71,25 @@ export function StatementImportScreen({ accounts, batches, initialAccountId }: {
     form.set("file", f);
     run(() => readStatement(form), {
       onDone: (data) => {
-        setFile(data);
-        setMapping(guessMapping(data.grid));
+        setFile({ filename: data.filename, grid: data.grid });
+        if (data.saved) {
+          // A layout imported before: use its saved columns and go straight to review.
+          const rows = normalizeStatement(data.grid, data.saved.mapping, decimals).rows;
+          setMapping(data.saved.mapping);
+          setRecognised({ name: data.saved.name, accountId: data.saved.accountId });
+          if (rows.length) return preview(rows);
+        } else {
+          setMapping(guessMapping(data.grid));
+          setRecognised(null);
+        }
         setStep("map");
       },
     });
   };
 
-  const preview = () => {
-    if (!normalized?.rows.length) return;
-    run(() => previewStatementAction(accountId, normalized.rows), {
+  const preview = (rows = normalized?.rows, forAccount = accountId) => {
+    if (!rows?.length) return;
+    run(() => previewStatementAction(forAccount, rows), {
       onDone: (data) => {
         setLines(data);
         setChoices(data.map((l) => ({ include: !l.duplicate, target: l.suggestion?.categoryId ?? "" })));
@@ -69,6 +97,7 @@ export function StatementImportScreen({ accounts, batches, initialAccountId }: {
       },
     });
   };
+  const suggested = recognised?.accountId && recognised.accountId !== accountId ? accounts.find((a) => a.id === recognised.accountId) : undefined;
 
   const commit = () => {
     const chosen = lines
@@ -82,7 +111,8 @@ export function StatementImportScreen({ accounts, batches, initialAccountId }: {
         categoryId: c.target && !c.target.startsWith("transfer:") ? c.target : null,
         transferAccountId: c.target.startsWith("transfer:") ? c.target.slice(9) : null,
       }));
-    run(() => commitStatementAction({ accountId, filename: file!.filename, rowCount: lines.length, lines: chosen }), {
+    const format = mapping && file ? { signature: headerSignature(file.grid[mapping.headerRow] ?? []), mapping } : undefined;
+    run(() => commitStatementAction({ accountId, filename: file!.filename, rowCount: lines.length, lines: chosen, format }), {
       onDone: (data) => {
         setResult(data);
         setStep("done");
@@ -96,6 +126,7 @@ export function StatementImportScreen({ accounts, batches, initialAccountId }: {
     setMapping(null);
     setLines([]);
     setResult(null);
+    setRecognised(null);
   };
 
   return (
@@ -125,7 +156,33 @@ export function StatementImportScreen({ accounts, batches, initialAccountId }: {
       )}
 
       {step === "map" && file && mapping && (
-        <MapStep grid={file.grid} filename={file.filename} mapping={mapping} onChange={setMapping} normalized={normalized} currencyCode={account?.currency ?? "AED"} onBack={reset} onNext={preview} pending={pending} />
+        <MapStep grid={file.grid} filename={file.filename} mapping={mapping} onChange={setMapping} normalized={normalized} currencyCode={account?.currency ?? "AED"} onBack={reset} onNext={() => preview()} pending={pending} />
+      )}
+
+      {step === "review" && recognised && (
+        <Card className="flex flex-wrap items-center gap-3 border-primary/40 bg-primary-soft/40 p-4">
+          <Sparkles size={18} className="shrink-0 text-primary-strong" aria-hidden />
+          <p className="min-w-0 flex-1 text-sm">
+            Recognised <b>{recognised.name}</b>: columns matched as last time.
+            {suggested && <> Last imported into {suggested.name}.</>}
+          </p>
+          {suggested && (
+            <Button
+              variant="secondary"
+              className="h-9"
+              disabled={pending}
+              onClick={() => {
+                setAccountId(suggested.id);
+                preview(normalized?.rows, suggested.id);
+              }}
+            >
+              Use {suggested.name}
+            </Button>
+          )}
+          <Button variant="ghost" className="h-9" onClick={() => setStep("map")}>
+            Adjust columns
+          </Button>
+        </Card>
       )}
 
       {step === "review" && (
@@ -151,6 +208,8 @@ export function StatementImportScreen({ accounts, batches, initialAccountId }: {
           </div>
         </Card>
       )}
+
+      {step === "file" && formats.length > 0 && <SavedFormats formats={formats} accounts={accounts} />}
 
       {batches.length > 0 && (
         <section>
@@ -426,5 +485,52 @@ function ReviewStep({
         </Button>
       </div>
     </div>
+  );
+}
+
+/** Layouts learned from earlier imports. Statements in these layouts skip column matching. */
+function SavedFormats({ formats, accounts }: { formats: ImportFormatSummary[]; accounts: AccountView[] }) {
+  const { isAdmin } = useApp();
+  const { pending, run } = useAction();
+  const name = new Map(accounts.map((a) => [a.id, a.name]));
+  return (
+    <section>
+      <h2 className="mb-1 text-[15px] font-semibold">Saved formats</h2>
+      <p className="mb-3 text-sm text-muted">Statements in these layouts are recognised and skip column matching. New layouts are saved after their first import.</p>
+      <Card className="divide-y divide-border">
+        {formats.map((f) => (
+          <div key={f.id} className="flex items-center gap-3 px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{f.name}</p>
+              <p className="text-xs text-muted">
+                Used {f.useCount} time{f.useCount === 1 ? "" : "s"} · last {f.lastUsedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                {f.accountId && name.get(f.accountId) ? ` · ${name.get(f.accountId)}` : ""}
+              </p>
+            </div>
+            {isAdmin && (
+              <>
+                <IconButton
+                  label={`Rename ${f.name}`}
+                  disabled={pending}
+                  onClick={() => {
+                    const next = prompt("Name this format, e.g. the bank and account type", f.name);
+                    if (next && next !== f.name) run(() => renameImportFormatAction(f.id, next), { success: "Format renamed" });
+                  }}
+                >
+                  <Pencil size={15} />
+                </IconButton>
+                <IconButton
+                  label={`Forget ${f.name}`}
+                  disabled={pending}
+                  onClick={() => confirm(`Forget “${f.name}”? Its next statement will ask you to match columns again.`) && run(() => deleteImportFormatAction(f.id), { success: "Format forgotten" })}
+                >
+                  <Trash2 size={15} />
+                </IconButton>
+              </>
+            )}
+          </div>
+        ))}
+      </Card>
+    </section>
   );
 }

@@ -1,8 +1,13 @@
 "use server";
 
-import type { Promo, StatementRow } from "@gpa/core";
+import { matchSavedFormat, type ColumnMapping, type Promo, type StatementRow } from "@gpa/core";
 import {
   addPdfLine,
+  assertAdmin,
+  deleteImportFormat,
+  listImportFormats,
+  renameImportFormat,
+  saveImportFormat,
   assertCanWrite,
   assertCanWriteImportBatch,
   commitStatement,
@@ -31,13 +36,16 @@ function fileFrom(form: FormData): File {
 
 /** Statement step 1: read a CSV/Excel file into a grid for column mapping in the browser. */
 export async function readStatement(form: FormData) {
-  return runAction(async (_db, access) => {
+  return runAction(async (db, access) => {
     assertCanWrite(access);
     const file = fileFrom(form);
     if (!/\.(csv|txt|xlsx|xlsm|xls|ods)$/i.test(file.name)) throw new ValidationError("Upload a CSV or Excel statement");
-    const grid = await readStatementFile(new Uint8Array(await file.arrayBuffer()), file.name);
+    const grid = (await readStatementFile(new Uint8Array(await file.arrayBuffer()), file.name)).slice(0, 5000);
     if (grid.length < 2) throw new ValidationError("No rows found in this file");
-    return { filename: file.name, grid: grid.slice(0, 5000) };
+    // A layout imported before? Its saved mapping skips the column-matching step.
+    const match = matchSavedFormat(grid, await listImportFormats(db));
+    const saved = match ? { id: match.format.id, name: match.format.name, accountId: match.format.accountId, mapping: match.mapping } : null;
+    return { filename: file.name, grid, saved };
   });
 }
 
@@ -45,9 +53,30 @@ export async function previewStatementAction(accountId: string, rows: StatementR
   return runAction((db, access) => (assertCanWrite(access, [accountId]), previewStatement(db, accountId, rows)));
 }
 
-export async function commitStatementAction(input: { accountId: string; filename: string; rowCount: number; lines: CommitLine[] }) {
-  // Lines booked as transfers touch a second account, which must be the person's too.
-  return runAction((db, access) => (assertCanWrite(access, [input.accountId, ...input.lines.map((l) => l.transferAccountId)]), commitStatement(db, { ...input, by: access.userId })));
+export async function commitStatementAction(input: {
+  accountId: string;
+  filename: string;
+  rowCount: number;
+  lines: CommitLine[];
+  /** The layout and mapping used, remembered for next time. */
+  format?: { signature: string; mapping: ColumnMapping };
+}) {
+  return runAction(async (db, access) => {
+    // Lines booked as transfers touch a second account, which must be the person's too.
+    assertCanWrite(access, [input.accountId, ...input.lines.map((l) => l.transferAccountId)]);
+    const { format, ...rest } = input;
+    const result = await commitStatement(db, { ...rest, by: access.userId });
+    if (format) await saveImportFormat(db, { ...format, accountId: input.accountId });
+    return result;
+  });
+}
+
+export async function renameImportFormatAction(id: string, name: string) {
+  return runAction((db, access) => (assertAdmin(access), renameImportFormat(db, id, name)));
+}
+
+export async function deleteImportFormatAction(id: string) {
+  return runAction((db, access) => (assertAdmin(access), deleteImportFormat(db, id)));
 }
 
 export async function undoImportAction(batchId: string) {
